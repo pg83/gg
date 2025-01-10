@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os/exec"
 	"strings"
+	"encoding/json"
 )
 
 const (
@@ -182,6 +183,16 @@ type TCDescriptor struct {
 	BuildType string `json:"build_type"`
 }
 
+func (self *TCDescriptor) encode() []byte {
+	res, err := json.Marshal(*self)
+
+	if err != nil {
+		newException(err).throw()
+	}
+
+	return res
+}
+
 func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
 	target := extra["GG_TARGET_PLATFORM"]
 	fields := strings.Split(target, "-")
@@ -216,12 +227,23 @@ func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
 			Target: plat,
 		},
 		PlatformName: strings.ToUpper(target),
-		BuildType: strings.ToUpper(flags["GG_BUILD_TYPE"]),
+		BuildType: flags["GG_BUILD_TYPE"],
 	}
 }
 
 func run() {
-    fmt.Println(newRenderContext())
+	rc := newRenderContext()
+	flags := Flags{
+		"MUSL": "yes",
+		"GG_BUILD_TYPE": "release",
+		"GG_TARGET_PLATFORM": "default-linux-x86_64",
+		"USER_CFLAGS": os.Getenv("CFLAGS"),
+		"USER_CONLYFLAGS": os.Getenv("CONLYFLAGS"),
+		"USER_CXXFLAGS": os.Getenv("CXXFLAGS"),
+		"USER_LDFLAGS": os.Getenv("LDFLAGS"),
+	}
+	tc := rc.toolChainFor(flags)
+	fmt.Println(string(tc.encode()))
 }
 
 func main() {
