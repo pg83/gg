@@ -5,6 +5,7 @@ import sys
 import json
 import base64
 import shutil
+import tempfile
 import subprocess
 
 def which(x):
@@ -14,7 +15,7 @@ def which(x):
     raise Exception(f'can not find {x}')
 
 def it_tools():
-    for x in ['strip', 'objcopy', 'objdump']:
+    for x in ['strip', 'objcopy', 'objdump', 'ar']:
         yield x, which('llvm-' + x)
 
     for x in ['clang', 'clang++', 'python3']:
@@ -23,6 +24,8 @@ def it_tools():
 tools = dict(it_tools())
 
 flags = {
+    'SANDBOXING': 'yes',
+    'MUSL': 'yes',
     'APPLE_SDK_LOCAL': 'yes',
     'CLANG_COVERAGE': 'no',
     'CONSISTENT_DEBUG': 'yes',
@@ -38,11 +41,19 @@ flags = {
     'BUILD_PYTHON_BIN': tools['python3'],
     'BUILD_PYTHON3_BIN': tools['python3'],
     'GG_BUILD_TYPE': 'release',
+    # target flags
+    'USER_CFLAGS': os.environ.get('CFLAGS', ''),
+    'USER_CONLYFLAGS': os.environ.get('CONLYFLAGS', ''),
+    'USER_CXXFLAGS': os.environ.get('CXXFLAGS', ''),
+    'USER_LDFLAGS': os.environ.get('LDFLAGS', ''),
 }
 
 for x, y in tools.items():
-    flags[x.upper() + '_TOOL'] = y
-    flags[x.upper() + '_TOOL_VENDOR'] = y
+    x = x.upper()
+    x = x.replace('+', '_PL')
+
+    flags[x + '_TOOL'] = y
+    flags[x + '_TOOL_VENDOR'] = y
 
 def gen_tp():
     plat = {
@@ -60,6 +71,7 @@ def gen_tp():
             'cxx_compiler': tools['clang++'],
             'objcopy': tools['objcopy'],
             'strip': tools['strip'],
+            'ar': tools['ar'],
             'type': 'clang',
             'version': '18',
         },
@@ -95,4 +107,28 @@ def gen_conf_call():
 
 os.environ['PYTHONPATH'] = root + '/contrib/python/six/py3'
 
-subprocess.check_call(gen_conf_call())
+conf = subprocess.check_output(gen_conf_call())
+
+def run_ymake(conf, target):
+    with tempfile.TemporaryDirectory() as td:
+        with open(td + '/conf', 'wb') as f:
+            f.write(conf)
+
+        ymake_call = [
+            'ymake',
+            '--warn', 'dirloops,ChkPeers',
+            '--write-meta-data', td + '/md',
+            '--config', td + '/conf',
+            '--plugins-root', root + '/build/plugins,' + root + '/build/internal/plugins',
+            '--build-root', td,
+            '--keep-on',
+            '--makefiles-dart', td + '/dart',
+            '--dump-build-plan', '-',
+            '--quiet',
+            '--events', 'dGT',
+            root + '/' + target,
+        ]
+
+        return subprocess.check_output(ymake_call)
+
+print(json.dumps(json.loads(run_ymake(conf, sys.argv[1])), indent=4, sort_keys=True))
