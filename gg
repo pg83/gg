@@ -6,7 +6,10 @@ import json
 import base64
 import shutil
 import tempfile
+import itertools
 import subprocess
+
+root = os.path.abspath(os.getcwd())
 
 def which(x):
     if xx := shutil.which(x):
@@ -25,7 +28,7 @@ def it_tools():
 
 tools = dict(it_tools())
 
-flags = {
+common_flags = {
     'SANDBOXING': 'yes',
     'MUSL': 'yes',
     'APPLE_SDK_LOCAL': 'yes',
@@ -54,19 +57,23 @@ for x, y in tools.items():
     x = x.upper()
     x = x.replace('+', '_PL')
 
-    flags[x + '_TOOL'] = y
-    flags[x + '_TOOL_VENDOR'] = y
+    common_flags[x + '_TOOL'] = y
+    common_flags[x + '_TOOL_VENDOR'] = y
 
-def gen_tp():
+def dict_update(a, b):
+    return dict(itertools.chain(a.items(), b.items()))
+
+def gen_tp(target, extra_flags):
+    tc, os, arch = target.split('-')
+
     plat = {
-        'arch': 'x86_64',
-        'os': 'LINUX',
-        'toolchain': 'default',
+        'arch': arch,
+        'os': os.upper(),
+        'toolchain': tc,
     }
 
     payload = {
-        'build_type': flags['GG_BUILD_TYPE'],
-        'flags': flags,
+        'flags': dict_update(common_flags, extra_flags),
         'name': 'clang',
         'params': {
             'c_compiler': tools['clang'],
@@ -81,38 +88,45 @@ def gen_tp():
             'host': plat,
             'target': plat,
         },
-        'platform_name': 'DEFAULT-LINUX-X86_64',
+        'platform_name': target.upper(),
     }
 
-    return base64.b64encode(json.dumps(payload).encode()).decode()
+    payload['build_type'] = payload['flags']['GG_BUILD_TYPE']
 
-root = os.path.abspath(os.getcwd())
+    return payload
+
+def encode_tp(tp):
+    return base64.b64encode(json.dumps(tp).encode()).decode()
 
 def it_flags(flags):
     for k, v in flags.items():
         yield '-D'
         yield f'{k}={v}'
 
-def gen_conf_call():
+def gen_conf_call(target, extra_flags):
+    tp = gen_tp(target, extra_flags)
+
     res = [
         sys.executable,
         root + '/build/ymake_conf.py',
         root,
-        'dist-' + flags['GG_BUILD_TYPE'],
+        'dist-' + tp['flags']['GG_BUILD_TYPE'],
         'no',
         '--toolchain-params',
-        gen_tp(),
+        encode_tp(tp),
         '-l',
-    ] + list(it_flags(flags))
+    ] + list(it_flags(tp['flags']))
 
     return res
 
-def gen_conf():
+def gen_conf(target, extra_flags):
     env = os.environ.copy()
 
     env['PYTHONPATH'] = root + '/contrib/python/six/py3'
 
-    return subprocess.check_output(gen_conf_call(), env=env)
+    args = gen_conf_call(target, extra_flags)
+
+    return subprocess.check_output(args, env=env)
 
 def run_ymake(conf, target):
     with tempfile.TemporaryDirectory() as td:
@@ -137,7 +151,8 @@ def run_ymake(conf, target):
 
         return subprocess.check_output(ymake_call, cwd=root)
 
-conf = gen_conf()
+target = 'default-linux-x86_64'
+conf = gen_conf(target, {})
 graph = run_ymake(conf, sys.argv[1])
 
 print(json.dumps(json.loads(graph), indent=4, sort_keys=True))
