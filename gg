@@ -107,9 +107,14 @@ def gen_conf_call():
 
     return res
 
-os.environ['PYTHONPATH'] = root + '/contrib/python/six/py3'
+def gen_conf():
+    env = os.environ.copy()
 
-conf = subprocess.check_output(gen_conf_call())
+    env['PYTHONPATH'] = root + '/contrib/python/six/py3'
+
+    return subprocess.check_output(gen_conf_call(), env=env)
+
+conf = gen_conf()
 
 def run_ymake(conf, target):
     with tempfile.TemporaryDirectory() as td:
@@ -131,6 +136,6 @@ def run_ymake(conf, target):
             root + '/' + target,
         ]
 
-        return subprocess.check_output(ymake_call)
+        return subprocess.check_output(ymake_call, cwd=root)
 
 print(json.dumps(json.loads(run_ymake(conf, sys.argv[1])), indent=4, sort_keys=True))
