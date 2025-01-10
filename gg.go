@@ -127,14 +127,27 @@ func commonFlags(tools *Tools) *Flags {
 type RenderContext struct {
 	Tools *Tools
 	Flags *Flags
+	SrcRoot string
+}
+
+func findRoot() string {
+	res, err := os.Getwd()
+
+	if err != nil {
+		newException(err).throw()
+	}
+
+	return res
 }
 
 func newRenderContext() *RenderContext {
 	tools := findTools()
+	root := findRoot()
 
 	return &RenderContext{
 		Tools: tools,
 		Flags: commonFlags(tools),
+		SrcRoot: root,
 	}
 }
 
