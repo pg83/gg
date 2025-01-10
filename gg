@@ -30,7 +30,6 @@ tools = dict(it_tools())
 
 common_flags = {
     'SANDBOXING': 'yes',
-    'MUSL': 'yes',
     'APPLE_SDK_LOCAL': 'yes',
     'CLANG_COVERAGE': 'no',
     'CONSISTENT_DEBUG': 'yes',
@@ -45,12 +44,6 @@ common_flags = {
     'USE_PYTHON3': 'yes',
     'BUILD_PYTHON_BIN': tools['python3'],
     'BUILD_PYTHON3_BIN': tools['python3'],
-    'GG_BUILD_TYPE': 'release',
-    # target flags
-    'USER_CFLAGS': os.environ.get('CFLAGS', ''),
-    'USER_CONLYFLAGS': os.environ.get('CONLYFLAGS', ''),
-    'USER_CXXFLAGS': os.environ.get('CXXFLAGS', ''),
-    'USER_LDFLAGS': os.environ.get('LDFLAGS', ''),
 }
 
 for x, y in tools.items():
@@ -152,7 +145,17 @@ def run_ymake(conf, target):
         return subprocess.check_output(ymake_call, cwd=root)
 
 target = 'default-linux-x86_64'
-conf = gen_conf(target, {})
+
+flags = {
+    'MUSL': 'yes',
+    'GG_BUILD_TYPE': 'release',
+    'USER_CFLAGS': os.environ.get('CFLAGS', ''),
+    'USER_CONLYFLAGS': os.environ.get('CONLYFLAGS', ''),
+    'USER_CXXFLAGS': os.environ.get('CXXFLAGS', ''),
+    'USER_LDFLAGS': os.environ.get('LDFLAGS', ''),
+}
+
+conf = gen_conf(target, flags)
 graph = run_ymake(conf, sys.argv[1])
 
 print(json.dumps(json.loads(graph), indent=4, sort_keys=True))
