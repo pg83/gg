@@ -82,7 +82,7 @@ type Tools map[string]string
 
 func findTools() *Tools {
 	return &Tools{
-		"string": lookPath("llvm-string"),
+		"strip": lookPath("llvm-strip"),
 		"objcopy": lookPath("llvm-objcopy"),
 		"objdump": lookPath("llvm-objdump"),
 		"ar": lookPath("llvm-ar"),
@@ -92,8 +92,44 @@ func findTools() *Tools {
 	}
 }
 
+type Flags map[string]string
+
+func commonFlags(tools *Tools) *Flags {
+	return &Flags{
+		"SANDBOXING": "yes",
+		"APPLE_SDK_LOCAL": "yes",
+		"CLANG_COVERAGE": "no",
+		"CONSISTENT_DEBUG": "yes",
+		"DISABLE_YMAKE_CONF_CUSTOMIZATION": "yes",
+		"NO_DEBUGINFO": "yes",
+		"OPENSOURCE": "yes",
+		"OS_SDK": "local",
+		"TIDY": "no",
+		"USE_ARCADIA_PYTHON": "yes",
+		"USE_CLANG_CL": "yes",
+		"USE_PREBUILT_TOOLS": "no",
+		"USE_PYTHON3": "yes",
+		"BUILD_PYTHON_BIN": (*tools)["python3"],
+		"BUILD_PYTHON3_BIN": (*tools)["python3"],
+	}
+}
+
+type RenderContext struct {
+	Tools *Tools
+	Flags *Flags
+}
+
+func newRenderContext() *RenderContext {
+	tools := findTools()
+
+	return &RenderContext{
+		Tools: tools,
+		Flags: commonFlags(tools),
+	}
+}
+
 func run() {
-    fmt.Println(findTools())
+    fmt.Println(newRenderContext())
 }
 
 func main() {
