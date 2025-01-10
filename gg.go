@@ -249,23 +249,24 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 		args = append(args, k + "=" + v)
 	}
 
-	var out bytes.Buffer
+	var outb bytes.Buffer
+	var errb bytes.Buffer
 
 	cmd := &exec.Cmd{
 		Path: args[0],
 		Args: args,
 		Dir: self.SrcRoot,
-		Stdout: &out,
-		
+		Stdout: &outb,
+		Stderr: &errb,
 	}
 
 	err := cmd.Run()
 
 	if err != nil {
-		newException(err).throw()
+		fmtException("genconf failed:\n%s, %w", errb.String(), err).throw()
 	}
 
-	return out.Bytes()
+	return outb.Bytes()
 }
 
 func run() {
@@ -280,7 +281,7 @@ func run() {
 		"USER_LDFLAGS": os.Getenv("LDFLAGS"),
 	}
 	tc := rc.toolChainFor(flags)
-	fmt.Println(string(tc.encode()))
+	fmt.Println(string(rc.genConfFor(tc)))
 }
 
 func main() {
