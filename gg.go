@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"maps"
+	"bytes"
 	"os/exec"
 	"strings"
 	"encoding/json"
@@ -183,14 +184,14 @@ type TCDescriptor struct {
 	BuildType string `json:"build_type"`
 }
 
-func (self *TCDescriptor) encode() []byte {
+func (self *TCDescriptor) encode() string {
 	res, err := json.Marshal(*self)
 
 	if err != nil {
 		newException(err).throw()
 	}
 
-	return res
+	return string(res)
 }
 
 func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
@@ -229,6 +230,42 @@ func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
 		PlatformName: strings.ToUpper(target),
 		BuildType: flags["GG_BUILD_TYPE"],
 	}
+}
+
+func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
+	args := []string{
+		(*self.Tools)["python3"],
+		self.SrcRoot + "/build/ymake_conf.py",
+		self.SrcRoot,
+		"dist-" + tc.BuildType,
+		"no",
+		"--toolchain-params",
+		tc.encode(),
+		"-l",
+	}
+
+	for k, v := range *self.Flags {
+		args = append(args, "-D")
+		args = append(args, k + "=" + v)
+	}
+
+	var out bytes.Buffer
+
+	cmd := &exec.Cmd{
+		Path: args[0],
+		Args: args,
+		Dir: self.SrcRoot,
+		Stdout: &out,
+		
+	}
+
+	err := cmd.Run()
+
+	if err != nil {
+		newException(err).throw()
+	}
+
+	return out.Bytes()
 }
 
 func run() {
