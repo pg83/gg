@@ -57,7 +57,7 @@ def dict_update(a, b):
     return dict(itertools.chain(a.items(), b.items()))
 
 def gen_tp(extra_flags):
-    target = extra_flags['GG_TARGET']
+    target = extra_flags['GG_TARGET_PLATFORM']
 
     tc, os, arch = target.split('-')
 
@@ -105,7 +105,7 @@ def gen_conf_call(extra_flags):
         sys.executable,
         root + '/build/ymake_conf.py',
         root,
-        'dist-' + tp['flags']['GG_BUILD_TYPE'],
+        'dist-' + tp['build_type'],
         'no',
         '--toolchain-params',
         encode_tp(tp),
@@ -148,7 +148,7 @@ def run_ymake(conf, targets):
 flags = {
     'MUSL': 'yes',
     'GG_BUILD_TYPE': 'release',
-    'GG_TARGET': 'default-linux-x86_64',
+    'GG_TARGET_PLATFORM': 'default-linux-x86_64',
     'USER_CFLAGS': os.environ.get('CFLAGS', ''),
     'USER_CONLYFLAGS': os.environ.get('CONLYFLAGS', ''),
     'USER_CXXFLAGS': os.environ.get('CXXFLAGS', ''),
