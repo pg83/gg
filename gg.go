@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 )
 
 const (
@@ -67,9 +68,23 @@ func try(cb func()) (err *Exception) {
 	return nil
 }
 
+func lookPath(prog string) string {
+	path, err := exec.LookPath(prog)
+
+	if err != nil {
+		newException(err).throw()
+	}
+
+	return path
+}
+
+func run() {
+    fmt.Println(lookPath("clang"))
+}
+
 func main() {
 	try(func() {
-		
+		run()
 	}).catch(func(exc *Exception) {
 		exc.fatal(1, "abort")
 	})
