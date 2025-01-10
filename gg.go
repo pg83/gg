@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 const (
@@ -95,7 +96,7 @@ func findTools() *Tools {
 type Flags map[string]string
 
 func commonFlags(tools *Tools) *Flags {
-	return &Flags{
+	res := Flags{
 		"SANDBOXING": "yes",
 		"APPLE_SDK_LOCAL": "yes",
 		"CLANG_COVERAGE": "no",
@@ -112,6 +113,15 @@ func commonFlags(tools *Tools) *Flags {
 		"BUILD_PYTHON_BIN": (*tools)["python3"],
 		"BUILD_PYTHON3_BIN": (*tools)["python3"],
 	}
+
+	for k, v := range *tools {
+		k = strings.ToUpper(strings.ReplaceAll(k, "+", "_pl"))
+
+		res[k + "_TOOL"] = v
+		res[k + "_TOOL_VENDOR"] = v
+	}
+
+	return &res
 }
 
 type RenderContext struct {
