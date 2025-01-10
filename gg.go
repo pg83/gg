@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"os/exec"
 	"strings"
+	"io/ioutil"
 	"encoding/json"
 	"encoding/base64"
 )
@@ -94,6 +95,7 @@ func findTools() *Tools {
 		"clang": lookPath("clang"),
 		"clang++": lookPath("clang++"),
 		"python3": lookPath("python3"),
+		"ymake": lookPath("ymake"),
 	}
 }
 
@@ -273,8 +275,63 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 	return outb.Bytes()
 }
 
+func (self *RenderContext) genGraphFor(conf []byte, targets []string) []byte {
+	td, err := os.MkdirTemp("", "ymake")
+
+	if err != nil {
+		newException(err).throw()
+	}
+
+	defer os.RemoveAll(td)
+
+	err = ioutil.WriteFile(td + "/conf", conf, 0666)
+
+	if err != nil {
+		newException(err).throw()
+	}
+
+	root := self.SrcRoot
+
+	args := []string{
+		(*self.Tools)["ymake"],
+		"--warn", "dirloops,ChkPeers",
+		"--write-meta-data", td + "/md",
+		"--config", td + "/conf",
+		"--plugins-root", root + "/build/plugins," + root + "/build/internal/plugins",
+		"--build-root", td,
+		"--source-root", root,
+		"--keep-on",
+		"--makefiles-dart", td + "/dart",
+		"--dump-build-plan", "-",
+		"--quiet",
+		"--events", "",
+        }
+
+	args = append(args, targets...)
+
+	var outb bytes.Buffer
+	var errb bytes.Buffer
+
+	cmd := &exec.Cmd{
+		Path: args[0],
+		Args: args,
+		Dir: root,
+		Stdout: &outb,
+		Stderr: &errb,
+	}
+
+	err = cmd.Run()
+
+	if err != nil {
+		fmtException("can not render graph: %s, %v", errb.String(), err).throw()
+	}
+
+	return outb.Bytes()
+}
+
 func run() {
 	rc := newRenderContext()
+
 	flags := Flags{
 		"MUSL": "yes",
 		"GG_BUILD_TYPE": "release",
@@ -284,8 +341,12 @@ func run() {
 		"USER_CXXFLAGS": os.Getenv("CXXFLAGS"),
 		"USER_LDFLAGS": os.Getenv("LDFLAGS"),
 	}
+
 	tc := rc.toolChainFor(flags)
-	fmt.Println(string(rc.genConfFor(tc)))
+	conf := rc.genConfFor(tc)
+	graph := rc.genGraphFor(conf, os.Args[1:])
+
+	fmt.Println(string(graph))
 }
 
 func main() {
