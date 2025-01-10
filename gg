@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import json
+import base64
+import shutil
+import subprocess
+
+def which(x):
+    if xx := shutil.which(x):
+        return xx
+
+    raise Exception(f'can not find {x}')
+
+def it_tools():
+    for x in ['strip', 'objcopy', 'objdump']:
+        yield x, which('llvm-' + x)
+
+    for x in ['clang', 'clang++', 'python3']:
+        yield x, which(x)
+
+tools = dict(it_tools())
+
+flags = {
+    'APPLE_SDK_LOCAL': 'yes',
+    'CLANG_COVERAGE': 'no',
+    'CONSISTENT_DEBUG': 'yes',
+    'DISABLE_YMAKE_CONF_CUSTOMIZATION': 'yes',
+    'NO_DEBUGINFO': 'yes',
+    'OPENSOURCE': 'yes',
+    'OS_SDK': 'local',
+    'TIDY': 'no',
+    'USE_ARCADIA_PYTHON': 'yes',
+    'USE_CLANG_CL': 'yes',
+    'USE_PREBUILT_TOOLS': 'no',
+    'USE_PYTHON3': 'yes',
+    'BUILD_PYTHON_BIN': tools['python3'],
+    'BUILD_PYTHON3_BIN': tools['python3'],
+    'GG_BUILD_TYPE': 'release',
+}
+
+for x, y in tools.items():
+    flags[x.upper() + '_TOOL'] = y
+    flags[x.upper() + '_TOOL_VENDOR'] = y
+
+def gen_tp():
+    plat = {
+        'arch': 'x86_64',
+        'os': 'LINUX',
+        'toolchain': 'default',
+    }
+
+    payload = {
+        'build_type': flags['GG_BUILD_TYPE'],
+        'flags': flags,
+        'name': 'clang',
+        'params': {
+            'c_compiler': tools['clang'],
+            'cxx_compiler': tools['clang++'],
+            'objcopy': tools['objcopy'],
+            'strip': tools['strip'],
+            'type': 'clang',
+            'version': '18',
+        },
+        'platform': {
+            'host': plat,
+            'target': plat,
+        },
+        'platform_name': 'DEFAULT-LINUX-X86_64',
+    }
+
+    return base64.b64encode(json.dumps(payload).encode()).decode()
+
+root = os.path.abspath(os.getcwd())
+
+def it_flags(flags):
+    for k, v in flags.items():
+        yield '-D'
+        yield f'{k}={v}'
+
+def gen_conf_call():
+    res = [
+        sys.executable,
+        root + '/build/ymake_conf.py',
+        root,
+        'dist-' + flags['GG_BUILD_TYPE'],
+        'no',
+        '--toolchain-params',
+        gen_tp(),
+        '-l',
+    ] + list(it_flags(flags))
+
+    return res
+
+os.environ['PYTHONPATH'] = root + '/contrib/python/six/py3'
+
+subprocess.check_call(gen_conf_call())
