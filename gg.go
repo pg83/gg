@@ -78,8 +78,22 @@ func lookPath(prog string) string {
 	return path
 }
 
+type Tools map[string]string
+
+func findTools() *Tools {
+	return &Tools{
+		"string": lookPath("llvm-string"),
+		"objcopy": lookPath("llvm-objcopy"),
+		"objdump": lookPath("llvm-objdump"),
+		"ar": lookPath("llvm-ar"),
+		"clang": lookPath("clang"),
+		"clang++": lookPath("clang++"),
+		"python3": lookPath("python3"),
+	}
+}
+
 func run() {
-    fmt.Println(lookPath("clang"))
+    fmt.Println(findTools())
 }
 
 func main() {
