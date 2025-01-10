@@ -56,7 +56,9 @@ for x, y in tools.items():
 def dict_update(a, b):
     return dict(itertools.chain(a.items(), b.items()))
 
-def gen_tp(target, extra_flags):
+def gen_tp(extra_flags):
+    target = extra_flags['GG_TARGET']
+
     tc, os, arch = target.split('-')
 
     plat = {
@@ -96,8 +98,8 @@ def it_flags(flags):
         yield '-D'
         yield f'{k}={v}'
 
-def gen_conf_call(target, extra_flags):
-    tp = gen_tp(target, extra_flags)
+def gen_conf_call(extra_flags):
+    tp = gen_tp(extra_flags)
 
     res = [
         sys.executable,
@@ -112,12 +114,12 @@ def gen_conf_call(target, extra_flags):
 
     return res
 
-def gen_conf(target, extra_flags):
+def gen_conf(extra_flags):
     env = os.environ.copy()
 
     env['PYTHONPATH'] = root + '/contrib/python/six/py3'
 
-    args = gen_conf_call(target, extra_flags)
+    args = gen_conf_call(extra_flags)
 
     return subprocess.check_output(args, env=env)
 
@@ -144,18 +146,17 @@ def run_ymake(conf, target):
 
         return subprocess.check_output(ymake_call, cwd=root)
 
-target = 'default-linux-x86_64'
-
 flags = {
     'MUSL': 'yes',
     'GG_BUILD_TYPE': 'release',
+    'GG_TARGET': 'default-linux-x86_64',
     'USER_CFLAGS': os.environ.get('CFLAGS', ''),
     'USER_CONLYFLAGS': os.environ.get('CONLYFLAGS', ''),
     'USER_CXXFLAGS': os.environ.get('CXXFLAGS', ''),
     'USER_LDFLAGS': os.environ.get('LDFLAGS', ''),
 }
 
-conf = gen_conf(target, flags)
+conf = gen_conf(flags)
 graph = run_ymake(conf, sys.argv[1])
 
 print(json.dumps(json.loads(graph), indent=4, sort_keys=True))
