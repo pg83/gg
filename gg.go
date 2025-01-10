@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"encoding/json"
+	"encoding/base64"
 )
 
 const (
@@ -191,7 +192,7 @@ func (self *TCDescriptor) encode() string {
 		newException(err).throw()
 	}
 
-	return string(res)
+	return base64.StdEncoding.EncodeToString(res)
 }
 
 func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
