@@ -249,12 +249,15 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 		args = append(args, k + "=" + v)
 	}
 
+	env := append(os.Environ(), "PYTHONPATH=" + self.SrcRoot + "/contrib/python/six/py3")
+
 	var outb bytes.Buffer
 	var errb bytes.Buffer
 
 	cmd := &exec.Cmd{
 		Path: args[0],
 		Args: args,
+		Env: env,
 		Dir: self.SrcRoot,
 		Stdout: &outb,
 		Stderr: &errb,
