@@ -125,7 +125,7 @@ def run_ymake(conf, target):
             '--makefiles-dart', td + '/dart',
             '--dump-build-plan', '-',
             '--quiet',
-            '--events', 'dGT',
+            '--events', '',
             root + '/' + target,
         ]
 
