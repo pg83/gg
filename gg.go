@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"maps"
 	"os/exec"
 	"strings"
 )
@@ -148,6 +149,74 @@ func newRenderContext() *RenderContext {
 		Tools: tools,
 		Flags: commonFlags(tools),
 		SrcRoot: root,
+	}
+}
+
+type TCParams struct {
+	C string `json:"c_compiler"`
+	CXX string `json:"cxx_compiler"`
+	ObjCopy string `json:"objcopy"`
+	Strip string `json:"strip"`
+	AR string `json:"ar"`
+	Type string `json:"type"`
+	Version string `json:"version"`
+}
+
+type TCPlatform struct {
+	Arch string `json:"arch"`
+	OS string `json:"os"`
+	Toolchain string `json:"toolchain"`
+}
+
+type TCPlatforms struct {
+	Host *TCPlatform `json:"host"`
+	Target *TCPlatform `json:"target"`
+}
+
+type TCDescriptor struct {
+	Flags *Flags `json:"flags"`
+	Name string `json:"name"`
+	Params *TCParams `json:"params"`
+	Platform *TCPlatforms `json:"platform"`
+	PlatformName string `json:"platform_name"`
+	BuildType string `json:"build_type"`
+}
+
+func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
+	target := extra["GG_TARGET_PLATFORM"]
+	fields := strings.Split(target, "-")
+
+	if len(fields) != 3 {
+		fmtException("wrong platform %s", target).throw()
+	}
+
+	plat := &TCPlatform{
+		Arch: fields[2],
+		OS: strings.ToUpper(fields[1]),
+		Toolchain: fields[0],
+	}
+
+	flags := maps.Clone(*self.Flags)
+	maps.Copy(flags, extra)
+
+	return &TCDescriptor{
+		Flags: &flags,
+		Name: "clang",
+		Params: &TCParams{
+			C: (*self.Tools)["clang"],
+			CXX: (*self.Tools)["clang++"],
+			ObjCopy: (*self.Tools)["objcopy"],
+			Strip: (*self.Tools)["strip"],
+			AR: (*self.Tools)["ar"],
+			Type: "clang",
+			Version: "18",
+		},
+		Platform: &TCPlatforms{
+			Host: plat,
+			Target: plat,
+		},
+		PlatformName: strings.ToUpper(target),
+		BuildType: strings.ToUpper(flags["GG_BUILD_TYPE"]),
 	}
 }
 
