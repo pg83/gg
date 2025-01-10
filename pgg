@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import json
+import base64
+import shutil
+import tempfile
+import itertools
+import subprocess
+
+root = os.path.abspath(os.getcwd())
+
+def which(x):
+    if xx := shutil.which(x):
+        return xx
+
+    raise Exception(f'can not find {x}')
+
+def it_tools():
+    for x in ['strip', 'objcopy', 'objdump', 'ar']:
+        yield x, which('llvm-' + x)
+
+    for x in ['clang', 'clang++']:
+        yield x, which(x)
+
+    yield 'python3', os.path.abspath(sys.executable)
+
+tools = dict(it_tools())
+
+common_flags = {
+    'SANDBOXING': 'yes',
+    'APPLE_SDK_LOCAL': 'yes',
+    'CLANG_COVERAGE': 'no',
+    'CONSISTENT_DEBUG': 'yes',
+    'DISABLE_YMAKE_CONF_CUSTOMIZATION': 'yes',
+    'NO_DEBUGINFO': 'yes',
+    'OPENSOURCE': 'yes',
+    'OS_SDK': 'local',
+    'TIDY': 'no',
+    'USE_ARCADIA_PYTHON': 'yes',
+    'USE_CLANG_CL': 'yes',
+    'USE_PREBUILT_TOOLS': 'no',
+    'USE_PYTHON3': 'yes',
+    'BUILD_PYTHON_BIN': tools['python3'],
+    'BUILD_PYTHON3_BIN': tools['python3'],
+}
+
+for x, y in tools.items():
+    x = x.upper()
+    x = x.replace('+', '_PL')
+
+    common_flags[x + '_TOOL'] = y
+    common_flags[x + '_TOOL_VENDOR'] = y
+
+def dict_update(a, b):
+    return dict(itertools.chain(a.items(), b.items()))
+
+def gen_tp(extra_flags):
+    target = extra_flags['GG_TARGET_PLATFORM']
+
+    tc, os, arch = target.split('-')
+
+    plat = {
+        'arch': arch,
+        'os': os.upper(),
+        'toolchain': tc,
+    }
+
+    payload = {
+        'flags': dict_update(common_flags, extra_flags),
+        'name': 'clang',
+        'params': {
+            'c_compiler': tools['clang'],
+            'cxx_compiler': tools['clang++'],
+            'objcopy': tools['objcopy'],
+            'strip': tools['strip'],
+            'ar': tools['ar'],
+            'type': 'clang',
+            'version': '18',
+        },
+        'platform': {
+            'host': plat,
+            'target': plat,
+        },
+        'platform_name': target.upper(),
+    }
+
+    payload['build_type'] = payload['flags']['GG_BUILD_TYPE']
+
+    return payload
+
+def encode_tp(tp):
+    return base64.b64encode(json.dumps(tp).encode()).decode()
+
+def it_flags(flags):
+    for k, v in flags.items():
+        yield '-D'
+        yield f'{k}={v}'
+
+def gen_conf_call(extra_flags):
+    tp = gen_tp(extra_flags)
+
+    res = [
+        sys.executable,
+        root + '/build/ymake_conf.py',
+        root,
+        'dist-' + tp['build_type'],
+        'no',
+        '--toolchain-params',
+        encode_tp(tp),
+        '-l',
+    ] + list(it_flags(tp['flags']))
+
+    return res
+
+def gen_conf(extra_flags):
+    env = os.environ.copy()
+
+    env['PYTHONPATH'] = root + '/contrib/python/six/py3'
+
+    args = gen_conf_call(extra_flags)
+
+    return subprocess.check_output(args, env=env)
+
+def run_ymake(conf, targets):
+    with tempfile.TemporaryDirectory() as td:
+        with open(td + '/conf', 'wb') as f:
+            f.write(conf)
+
+        ymake_call = [
+            'ymake',
+            '--warn', 'dirloops,ChkPeers',
+            '--write-meta-data', td + '/md',
+            '--config', td + '/conf',
+            '--plugins-root', root + '/build/plugins,' + root + '/build/internal/plugins',
+            '--build-root', td,
+            '--source-root', root,
+            '--keep-on',
+            '--makefiles-dart', td + '/dart',
+            '--dump-build-plan', '-',
+            '--quiet',
+            '--events', '',
+        ] + targets
+
+        return subprocess.check_output(ymake_call, cwd=root)
+
+flags = {
+    'MUSL': 'yes',
+    'GG_BUILD_TYPE': 'release',
+    'GG_TARGET_PLATFORM': 'default-linux-x86_64',
+    'USER_CFLAGS': os.environ.get('CFLAGS', ''),
+    'USER_CONLYFLAGS': os.environ.get('CONLYFLAGS', ''),
+    'USER_CXXFLAGS': os.environ.get('CXXFLAGS', ''),
+    'USER_LDFLAGS': os.environ.get('LDFLAGS', ''),
+}
+
+conf = gen_conf(flags)
+graph = run_ymake(conf, sys.argv[1:])
+
+print(json.dumps(json.loads(graph), indent=4, sort_keys=True))
