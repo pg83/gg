@@ -114,8 +114,6 @@ def gen_conf():
 
     return subprocess.check_output(gen_conf_call(), env=env)
 
-conf = gen_conf()
-
 def run_ymake(conf, target):
     with tempfile.TemporaryDirectory() as td:
         with open(td + '/conf', 'wb') as f:
@@ -139,4 +137,7 @@ def run_ymake(conf, target):
 
         return subprocess.check_output(ymake_call, cwd=root)
 
-print(json.dumps(json.loads(run_ymake(conf, sys.argv[1])), indent=4, sort_keys=True))
+conf = gen_conf()
+graph = run_ymake(conf, sys.argv[1])
+
+print(json.dumps(json.loads(graph), indent=4, sort_keys=True))
