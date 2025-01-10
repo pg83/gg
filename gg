@@ -18,8 +18,10 @@ def it_tools():
     for x in ['strip', 'objcopy', 'objdump', 'ar']:
         yield x, which('llvm-' + x)
 
-    for x in ['clang', 'clang++', 'python3']:
+    for x in ['clang', 'clang++']:
         yield x, which(x)
+
+    yield 'python3', os.path.abspath(sys.executable)
 
 tools = dict(it_tools())
 
