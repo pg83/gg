@@ -365,6 +365,8 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 type Cmd struct {
 	Args []string `json:"cmd_args"`
 	Env map[string]string `json:"env"`
+	StdOut *string `json:"stdout"`
+	CWD *string `json:"cwd"`
 }
 
 type Node struct {
@@ -422,9 +424,16 @@ func (self *Executor) executeNode(node *Node) {
 
 	for _, c := range node.Cmds {
 		res, err := exec.Command(c.Args[0], c.Args[1:]...).CombinedOutput()
-		os.Stdout.Write(res)
+
 		if err != nil {
+			os.Stdout.Write(res)
 			fmtException("%s: %v", c.Args, err).throw()
+		}
+
+		if c.StdOut == nil {
+			os.Stdout.Write(res)
+		} else {
+			throw(ioutil.WriteFile(*c.StdOut, res, 0666))
 		}
 	}
 
@@ -538,7 +547,7 @@ func handleMake(args []string) {
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts: getopt.OptStr(`rdkD:j:`),
+		Opts: getopt.OptStr(`rdkTD:j:`),
 		Mode: getopt.ModeInOrder,
 	}
 
@@ -556,6 +565,8 @@ func handleMake(args []string) {
 
 		if opt.Char == 'k' {
 			keep = true
+		} else if opt.Char == 'T' {
+			//pass
 		} else if opt.Char == 'D' {
 			fields := strings.Split(opt.OptArg, "=")
 
