@@ -58,6 +58,12 @@ func fmtException(format string, args ...any) *Exception {
 	return newException(fmt.Errorf(format, args...))
 }
 
+func throw(err error) {
+	if err != nil {
+		newException(err).throw()
+	}
+}
+
 func try(cb func()) (err *Exception) {
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -78,9 +84,7 @@ func try(cb func()) (err *Exception) {
 func lookPath(prog string) string {
 	path, err := exec.LookPath(prog)
 
-	if err != nil {
-		newException(err).throw()
-	}
+	throw(err)
 
 	return path
 }
@@ -140,9 +144,7 @@ type RenderContext struct {
 func findRoot() string {
 	res, err := os.Getwd()
 
-	if err != nil {
-		newException(err).throw()
-	}
+	throw(err)
 
 	return res
 }
@@ -191,9 +193,7 @@ type TCDescriptor struct {
 func (self *TCDescriptor) encode() string {
 	res, err := json.Marshal(*self)
 
-	if err != nil {
-		newException(err).throw()
-	}
+	throw(err)
 
 	return base64.StdEncoding.EncodeToString(res)
 }
@@ -287,9 +287,7 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string) []byte {
 
 	err = ioutil.WriteFile(td + "/conf", conf, 0666)
 
-	if err != nil {
-		newException(err).throw()
-	}
+	throw(err)
 
 	root := self.SrcRoot
 
