@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 	"maps"
+	"time"
 	"bytes"
 	"os/exec"
 	"strings"
@@ -511,8 +512,9 @@ func run() {
 	}
 
 	tc := rc.toolChainFor(flags)
+	start := time.Now()
 	conf := rc.genConfFor(tc)
-
+	fmt.Println(time.Now().Sub(start))
 	graph := string(rc.genGraphFor(conf, os.Args[1:]))
 
 	graph = strings.ReplaceAll(graph, "$(BUILD_ROOT)", rc.SrcRoot)
