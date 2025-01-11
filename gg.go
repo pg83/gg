@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"io/ioutil"
+	"path/filepath"
 	"encoding/json"
 	"encoding/base64"
 )
@@ -123,6 +124,7 @@ func commonFlags(tools *Tools) *Flags {
 		"USE_PYTHON3": "yes",
 		"BUILD_PYTHON_BIN": (*tools)["python3"],
 		"BUILD_PYTHON3_BIN": (*tools)["python3"],
+		"NEED_PLATFORM_PEERDIRS": "no",
 	}
 
 	for k, v := range *tools {
@@ -375,10 +377,34 @@ type Executor struct {
 
 func (self *Executor) executeNode(node *Node) {
 	fmt.Printf("execute %s\n", node.Outputs)
+
+	for _, o := range node.Outputs {
+		os.MkdirAll(filepath.Dir(o), os.ModePerm)
+	}
+
+	for _, c := range node.Cmds {
+		res, err := exec.Command(c.Args[0], c.Args[1:]...).CombinedOutput()
+		os.Stdout.Write(res)
+		if err != nil {
+			fmtException("%s: %w", c.Args, err).throw()
+		}
+	}
+}
+
+func checkExists(path string) bool {
+	_, err := os.Stat(path)
+
+	return err == nil
 }
 
 func complete(node *Node) bool {
-	return false
+	for _, o := range node.Outputs {
+		if !checkExists(o) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (self *Executor) execute(node *Node) {
@@ -388,6 +414,10 @@ func (self *Executor) execute(node *Node) {
 
 	self.visitAll(node.Deps)
 	self.executeNode(node)
+
+	if !complete(node) {
+		fmtException("node %s not complete", node).throw()
+	}
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
@@ -411,6 +441,16 @@ func newExecutor(nodes []Node) *Executor {
 }
 
 func (self *Executor) visitAll(uids []string) {
+	if len(uids) == 0 {
+		return
+	}
+
+	if len(uids) == 1 {
+		(*self.ByUid)[uids[0]].callOnce()
+
+		return
+	}
+
 	wg := &sync.WaitGroup{}
 
 	for _, u := range uids {
