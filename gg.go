@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"os/exec"
 	"strings"
+	"strconv"
 	"io/ioutil"
 	"path/filepath"
 	"encoding/json"
@@ -452,12 +453,12 @@ func newNodeFuture(ex *Executor, node *Node) *Future {
 	}}
 }
 
-func newExecutor(nodes []Node) *Executor {
+func newExecutor(nodes []Node, threads int) *Executor {
 	deps := map[string]*Future{}
 
 	res := &Executor{
 		ByUid: &deps,
-		Sched: newSemaphore(16),
+		Sched: newSemaphore(threads),
 	}
 
 	for _, n := range nodes {
@@ -522,6 +523,7 @@ func handleMake(args []string) {
 
 	targets := []string{}
 	keep := false
+	threads := 1
 
 	for opt, err := range state.All(config) {
 		if err != nil {
@@ -534,7 +536,17 @@ func handleMake(args []string) {
 		if opt.Char == 'k' {
 			keep = true
 		} else if opt.Char == 'D' {
+			fields := strings.Split(opt.OptArg, "-")
+
+			if len(fields) != 2 {
+				fmtException("malformed flag %s", opt.OptArg).throw()
+			}
+
+			flags[fields[0]] = fields[1]
 		} else if opt.Char == 'j' {
+			i, err := strconv.Atoi(opt.OptArg)
+			throw(err)
+			threads = i
 		} else if opt.Char == 1 {
 			targets = append(targets, opt.OptArg)
 		} else {
@@ -551,7 +563,7 @@ func handleMake(args []string) {
 
 	proto := parseGraph([]byte(graph))
 
-	newExecutor(proto.Graph).visitAll(proto.Result)
+	newExecutor(proto.Graph, threads).visitAll(proto.Result)
 }
 
 func help() {
