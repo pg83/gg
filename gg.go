@@ -329,6 +329,38 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string) []byte {
 	return outb.Bytes()
 }
 
+type Cmd struct {
+	Args []string `json:"cmd_args"`
+	Env map[string]string `json:"env"`
+}
+
+type Node struct {
+	Uid string `json:"uid"`
+	Cmds []Cmd `json:"cmds"`
+	Inputs []string `json:"inputs"`
+	Outputs []string `json:"outputs"`
+	Deps []string `json:"deps"`
+	KV map[string]string `json:"kv"`
+	Env map[string]string `json:"env"`
+}
+
+type Proto struct {
+	Graph []Node `json:"graph"`
+	Result []string `json:"result"`
+}
+
+func parseGraph(data []byte) *Proto {
+	var res Proto
+
+	err := json.Unmarshal(data, &res)
+
+	if err != nil {
+		fmtException("can not parse ymake graph: %v", err).throw()
+	}
+
+	return &res
+}
+
 func run() {
 	rc := newRenderContext()
 
@@ -345,8 +377,9 @@ func run() {
 	tc := rc.toolChainFor(flags)
 	conf := rc.genConfFor(tc)
 	graph := rc.genGraphFor(conf, os.Args[1:])
+	proto := parseGraph(graph)
 
-	fmt.Println(string(graph))
+	fmt.Println(proto)
 }
 
 func main() {
