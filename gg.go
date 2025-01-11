@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 	"maps"
 	"bytes"
 	"os/exec"
@@ -247,7 +248,7 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 		"-l",
 	}
 
-	for k, v := range *self.Flags {
+	for k, v := range *tc.Flags {
 		args = append(args, "-D")
 		args = append(args, k + "=" + v)
 	}
@@ -361,33 +362,76 @@ func parseGraph(data []byte) *Proto {
 	return &res
 }
 
-func execute1(nodes []Node, result []string) {
-	byUid := map[string]*Node{}
+type Future struct {
+	F func()
+	O sync.Once
+}
+
+func (self *Future) callOnce() {
+	self.O.Do(self.F)
+}
+
+type Executor struct {
+	ByUid *map[string]*Future
+}
+
+func (self *Executor) executeNode(node *Node) {
+	fmt.Printf("execute %s\n", node.Outputs)
+}
+
+func complete(node *Node) bool {
+	return false
+}
+
+func (self *Executor) execute(node *Node) {
+	if complete(node) {
+		return
+	}
+
+	self.visitAll(node.Deps)
+	self.executeNode(node)
+}
+
+func newNodeFuture(ex *Executor, node *Node) *Future {
+	return &Future{F: func() {
+		ex.execute(node)
+	}}
+}
+
+func newExecutor(nodes []Node) *Executor {
+	deps := map[string]*Future{}
+
+	res := &Executor{
+		ByUid: &deps,
+	}
 
 	for _, n := range nodes {
-		byUid[n.Uid] = &n
+		deps[n.Uid] = newNodeFuture(res, &n)
 	}
 
-	complete := map[string]*Node{}
+	return res
+}
 
-	var visit func(node *Node)
+func (self *Executor) visitAll(uids []string) {
+	wg := &sync.WaitGroup{}
 
-	visit = func(node *Node) {
-		if _, ok := complete[node.Uid]; ok {
-			return
-		}
+	for _, u := range uids {
+		f := (*self.ByUid)[u]
 
-		for _, d := range node.Deps {
-			visit(byUid[d])
-		}
+		wg.Add(1)
 
-		complete[node.Uid] = node
-		fmt.Printf("complete %s\n", node.Outputs)
+		go func() {
+			defer wg.Done()
+
+			try(func() {
+				f.callOnce()
+			}).catch(func(exc *Exception) {
+				exc.fatal(2, "subcommand error")
+			})
+		}()
 	}
 
-	for _, d := range result {
-		visit(byUid[d])
-	}
+	wg.Wait()
 }
 
 func run() {
@@ -405,10 +449,15 @@ func run() {
 
 	tc := rc.toolChainFor(flags)
 	conf := rc.genConfFor(tc)
-	graph := rc.genGraphFor(conf, os.Args[1:])
-	proto := parseGraph(graph)
 
-	execute1(proto.Graph, proto.Result)
+	graph := string(rc.genGraphFor(conf, os.Args[1:]))
+
+	graph = strings.ReplaceAll(graph, "$(BUILD_ROOT)", rc.SrcRoot)
+	graph = strings.ReplaceAll(graph, "$(SOURCE_ROOT)", rc.SrcRoot)
+
+	proto := parseGraph([]byte(graph))
+
+	newExecutor(proto.Graph).visitAll(proto.Result)
 }
 
 func main() {
