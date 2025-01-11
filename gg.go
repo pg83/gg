@@ -19,15 +19,23 @@ import (
 const (
 	ESC = "\x1b"
 	RST = ESC + "[0m"
-	R   = ESC + "[91m"
-	G   = ESC + "[92m"
-	Y   = ESC + "[93m"
-	B   = ESC + "[94m"
-	M   = ESC + "[95m"
+)
+
+var (
+	COLS = map[string]string{
+		"red": ESC + "[91m",
+		"green": ESC + "[92m",
+		"yellow": ESC + "[93m",
+		"blue": ESC + "[94m",
+		"margenta": ESC + "[95m",
+		"cyan": ESC + "[96m",
+		"white": ESC + "[97m",
+		"light-red": ESC + "[91m",
+	}
 )
 
 func color(color string, s string) string {
-	return color + s + RST
+	return COLS[color] + s + RST
 }
 
 type Exception struct {
@@ -45,7 +53,7 @@ func (self *Exception) catch(cb func(*Exception)) {
 }
 
 func (self *Exception) fatal(code int, prefix string) {
-	fmt.Fprintf(os.Stderr, "%s%s: %v%s\n", R, prefix, self.what(), RST)
+	fmt.Fprintf(os.Stderr, "%s%s: %v%s\n", COLS["red"], prefix, self.what(), RST)
 	os.Exit(code)
 }
 
@@ -444,7 +452,7 @@ func (self *Executor) execute(node *Node) {
 		fmtException("node %s not complete", node).throw()
 	}
 
-	fmt.Printf("[%s] %s\n", color("OK", G), node.Outputs)
+	fmt.Printf("[%s] %s\n", color(node.KV["pc"], node.KV["p"]), node.Outputs)
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
@@ -536,10 +544,10 @@ func handleMake(args []string) {
 		if opt.Char == 'k' {
 			keep = true
 		} else if opt.Char == 'D' {
-			fields := strings.Split(opt.OptArg, "-")
+			fields := strings.Split(opt.OptArg, "=")
 
 			if len(fields) != 2 {
-				fmtException("malformed flag %s", opt.OptArg).throw()
+				fmtException("malformed flag %s, %s", opt.OptArg).throw()
 			}
 
 			flags[fields[0]] = fields[1]
