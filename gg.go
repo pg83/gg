@@ -5,7 +5,6 @@ import (
 	"os"
 	"sync"
 	"maps"
-	"time"
 	"bytes"
 	"os/exec"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"path/filepath"
 	"encoding/json"
 	"encoding/base64"
+	"github.com/jon-codes/getopt"
 )
 
 const (
@@ -297,7 +297,7 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 	return outb.Bytes()
 }
 
-func (self *RenderContext) genGraphFor(conf []byte, targets []string) []byte {
+func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing bool) []byte {
 	td, err := os.MkdirTemp("", "ymake")
 
 	if err != nil {
@@ -320,12 +320,14 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string) []byte {
 		"--plugins-root", root + "/build/plugins," + root + "/build/internal/plugins",
 		"--build-root", td,
 		"--source-root", root,
-		"--keep-on",
 		"--makefiles-dart", td + "/dart",
 		"--dump-build-plan", "-",
-		"--quiet",
 		"--events", "",
         }
+
+	if keepGoing {
+		args = append(args, "--keep-on")
+	}
 
 	args = append(args, targets...)
 
@@ -343,7 +345,7 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string) []byte {
 	err = cmd.Run()
 
 	if err != nil {
-		fmtException("can not render graph: %s, %v", errb.String(), err).throw()
+		fmtException("%s%v", errb.String(), err).throw()
 	}
 
 	return outb.Bytes()
@@ -497,7 +499,7 @@ func (self *Executor) visitAll(uids []string) {
 	wg.Wait()
 }
 
-func run() {
+func handleMake(args []string) {
 	rc := newRenderContext()
 
 	flags := Flags{
@@ -511,11 +513,38 @@ func run() {
 		"USER_LDFLAGS": os.Getenv("LDFLAGS") + " -fuse-ld=lld",
 	}
 
+	state := getopt.NewState(args)
+
+	config := getopt.Config{
+		Opts: getopt.OptStr(`kD:j:`),
+		Mode: getopt.ModeInOrder,
+	}
+
+	targets := []string{}
+	keep := false
+
+	for opt, err := range state.All(config) {
+		if err != nil {
+			if err == getopt.ErrDone {
+				break
+			}
+			throw(err)
+		}
+
+		if opt.Char == 'k' {
+			keep = true
+		} else if opt.Char == 'D' {
+		} else if opt.Char == 'j' {
+		} else if opt.Char == 1 {
+			targets = append(targets, opt.OptArg)
+		} else {
+			fmtException("unhandled flag %s", opt.Char).throw()
+		}
+	}
+
 	tc := rc.toolChainFor(flags)
-	start := time.Now()
 	conf := rc.genConfFor(tc)
-	fmt.Println(time.Now().Sub(start))
-	graph := string(rc.genGraphFor(conf, os.Args[1:]))
+	graph := string(rc.genGraphFor(conf, targets, keep))
 
 	graph = strings.ReplaceAll(graph, "$(BUILD_ROOT)", rc.SrcRoot)
 	graph = strings.ReplaceAll(graph, "$(SOURCE_ROOT)", rc.SrcRoot)
@@ -525,9 +554,25 @@ func run() {
 	newExecutor(proto.Graph).visitAll(proto.Result)
 }
 
+func help() {
+	fmt.Println("available handlers:")
+	fmt.Println("    make")
+	fmt.Println("run gg [handler] --help for extra help")
+}
+
+func run(args []string) {
+	if len(args) == 0 {
+		help()
+	} else if args[0] == "make" {
+		handleMake(args)
+	} else {
+		help()
+	}
+}
+
 func main() {
 	try(func() {
-		run()
+		run(os.Args[1:])
 	}).catch(func(exc *Exception) {
 		exc.fatal(1, "abort")
 	})

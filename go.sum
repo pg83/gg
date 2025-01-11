@@ -1,0 +1,4 @@
+github.com/jon-codes/getopt v0.2.0 h1:n3F2nc7Rip6Qq2dEwIP74MoLY6SVv/DaPEgXihxGKcE=
+github.com/jon-codes/getopt v0.2.0/go.mod h1:ZdmM0SQaDC6biqEH/4HMSHdWAVJmX1tP62lrWVwH+p8=
+pgregory.net/rapid v1.1.0 h1:CMa0sjHSru3puNx+J0MIAuiiEV4N0qj8/cMWGBBCsjw=
+pgregory.net/rapid v1.1.0/go.mod h1:PY5XlDGj0+V1FCq0o192FdRhpKHGTRIWBgqjDBTrq04=
