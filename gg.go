@@ -532,13 +532,13 @@ func handleMake(args []string) {
 		"USER_CFLAGS": os.Getenv("CFLAGS"),
 		"USER_CONLYFLAGS": os.Getenv("CONLYFLAGS"),
 		"USER_CXXFLAGS": os.Getenv("CXXFLAGS"),
-		"USER_LDFLAGS": os.Getenv("LDFLAGS") + " -fuse-ld=lld",
+		"USER_LDFLAGS": os.Getenv("LDFLAGS"),
 	}
 
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts: getopt.OptStr(`kD:j:`),
+		Opts: getopt.OptStr(`rdkD:j:`),
 		Mode: getopt.ModeInOrder,
 	}
 
@@ -572,6 +572,10 @@ func handleMake(args []string) {
 			threads = i
 		} else if opt.Char == 1 {
 			targets = append(targets, opt.OptArg)
+		} else if opt.Char == 'r' {
+			flags["GG_BUILD_TYPE"] = "release"
+		} else if opt.Char == 'd' {
+			flags["GG_BUILD_TYPE"] = "debug"
 		} else {
 			fmtException("unhandled flag %s", opt.Char).throw()
 		}
