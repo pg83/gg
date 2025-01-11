@@ -10,6 +10,7 @@ import (
 	"strings"
 	"strconv"
 	"io/ioutil"
+	"sync/atomic"
 	"path/filepath"
 	"encoding/json"
 	"encoding/base64"
@@ -53,7 +54,8 @@ func (self *Exception) catch(cb func(*Exception)) {
 }
 
 func (self *Exception) fatal(code int, prefix string) {
-	fmt.Fprintf(os.Stderr, "%s%s: %v%s\n", COLS["red"], prefix, self.what(), RST)
+	msg := fmt.Sprintf("%s: %v", prefix, self.what())
+	fmt.Fprintf(os.Stderr, "%s\n", color("red", msg))
 	os.Exit(code)
 }
 
@@ -300,7 +302,7 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 	err := cmd.Run()
 
 	if err != nil {
-		fmtException("genconf failed:\n%s, %w", errb.String(), err).throw()
+		fmtException("genconf failed:\n%s, %v", errb.String(), err).throw()
 	}
 
 	return outb.Bytes()
@@ -404,9 +406,12 @@ func (self *Future) callOnce() {
 type Executor struct {
 	ByUid *map[string]*Future
 	Sched *Semaphore
+	Wait atomic.Uint64
+	Done atomic.Uint64
 }
 
 func (self *Executor) executeNode(node *Node) {
+	self.Wait.Add(1)
 	self.Sched.acquire()
 
 	defer self.Sched.release()
@@ -419,9 +424,11 @@ func (self *Executor) executeNode(node *Node) {
 		res, err := exec.Command(c.Args[0], c.Args[1:]...).CombinedOutput()
 		os.Stdout.Write(res)
 		if err != nil {
-			fmtException("%s: %w", c.Args, err).throw()
+			fmtException("%s: %v", c.Args, err).throw()
 		}
 	}
+
+	self.Done.Add(1)
 }
 
 func checkExists(path string) bool {
@@ -452,7 +459,10 @@ func (self *Executor) execute(node *Node) {
 		fmtException("node %s not complete", node).throw()
 	}
 
-	fmt.Printf("[%s] %s\n", color(node.KV["pc"], node.KV["p"]), node.Outputs)
+	done := self.Done.Load()
+	wait := self.Wait.Load()
+
+	fmt.Printf("[%s] {%d/%d} %s\n", color(node.KV["pc"], node.KV["p"]), done, wait, node.Outputs)
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
@@ -468,6 +478,9 @@ func newExecutor(nodes []Node, threads int) *Executor {
 		ByUid: &deps,
 		Sched: newSemaphore(threads),
 	}
+
+	res.Done.Store(0)
+	res.Wait.Store(0)
 
 	for _, n := range nodes {
 		deps[n.Uid] = newNodeFuture(res, &n)
@@ -546,11 +559,13 @@ func handleMake(args []string) {
 		} else if opt.Char == 'D' {
 			fields := strings.Split(opt.OptArg, "=")
 
-			if len(fields) != 2 {
+			if len(fields) == 1 {
+				flags[fields[0]] = "yes"
+			} else if len(fields) == 2 {
+				flags[fields[0]] = fields[1]
+			} else {
 				fmtException("malformed flag %s, %s", opt.OptArg).throw()
 			}
-
-			flags[fields[0]] = fields[1]
 		} else if opt.Char == 'j' {
 			i, err := strconv.Atoi(opt.OptArg)
 			throw(err)
