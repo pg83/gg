@@ -361,6 +361,35 @@ func parseGraph(data []byte) *Proto {
 	return &res
 }
 
+func execute1(nodes []Node, result []string) {
+	byUid := map[string]*Node{}
+
+	for _, n := range nodes {
+		byUid[n.Uid] = &n
+	}
+
+	complete := map[string]*Node{}
+
+	var visit func(node *Node)
+
+	visit = func(node *Node) {
+		if _, ok := complete[node.Uid]; ok {
+			return
+		}
+
+		for _, d := range node.Deps {
+			visit(byUid[d])
+		}
+
+		complete[node.Uid] = node
+		fmt.Printf("complete %s\n", node.Outputs)
+	}
+
+	for _, d := range result {
+		visit(byUid[d])
+	}
+}
+
 func run() {
 	rc := newRenderContext()
 
@@ -379,7 +408,7 @@ func run() {
 	graph := rc.genGraphFor(conf, os.Args[1:])
 	proto := parseGraph(graph)
 
-	fmt.Println(proto)
+	execute1(proto.Graph, proto.Result)
 }
 
 func main() {
