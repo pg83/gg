@@ -82,6 +82,24 @@ func try(cb func()) (err *Exception) {
 	return nil
 }
 
+type Semaphore struct {
+	ch chan struct{}
+}
+
+func newSemaphore(n int) *Semaphore {
+	return &Semaphore{
+		ch: make(chan struct{}, n),
+	}
+}
+
+func (self *Semaphore) acquire() {
+	self.ch <- struct{}{}
+}
+
+func (self *Semaphore) release() {
+	<-self.ch
+}
+
 func lookPath(prog string) string {
 	path, err := exec.LookPath(prog)
 
@@ -373,10 +391,13 @@ func (self *Future) callOnce() {
 
 type Executor struct {
 	ByUid *map[string]*Future
+	Sched *Semaphore
 }
 
 func (self *Executor) executeNode(node *Node) {
-	fmt.Printf("execute %s\n", node.Outputs)
+	self.Sched.acquire()
+
+	defer self.Sched.release()
 
 	for _, o := range node.Outputs {
 		os.MkdirAll(filepath.Dir(o), os.ModePerm)
@@ -418,6 +439,8 @@ func (self *Executor) execute(node *Node) {
 	if !complete(node) {
 		fmtException("node %s not complete", node).throw()
 	}
+
+	fmt.Printf("[%s] %s\n", color("OK", G), node.Outputs)
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
@@ -431,6 +454,7 @@ func newExecutor(nodes []Node) *Executor {
 
 	res := &Executor{
 		ByUid: &deps,
+		Sched: newSemaphore(16),
 	}
 
 	for _, n := range nodes {
@@ -477,12 +501,13 @@ func run() {
 
 	flags := Flags{
 		"MUSL": "yes",
+		"USE_ICONV": "static",
 		"GG_BUILD_TYPE": "release",
 		"GG_TARGET_PLATFORM": "default-linux-x86_64",
 		"USER_CFLAGS": os.Getenv("CFLAGS"),
 		"USER_CONLYFLAGS": os.Getenv("CONLYFLAGS"),
 		"USER_CXXFLAGS": os.Getenv("CXXFLAGS"),
-		"USER_LDFLAGS": os.Getenv("LDFLAGS"),
+		"USER_LDFLAGS": os.Getenv("LDFLAGS") + " -fuse-ld=lld",
 	}
 
 	tc := rc.toolChainFor(flags)
