@@ -494,9 +494,6 @@ func newExecutor(nodes []Node, threads int, rc *RenderContext) *Executor {
 		RC:    rc,
 	}
 
-	res.Done.Store(0)
-	res.Wait.Store(0)
-
 	for _, n := range nodes {
 		deps[n.Uid] = newNodeFuture(res, &n)
 	}
