@@ -550,8 +550,8 @@ func handleMake(args []string) {
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts:     getopt.OptStr("rdkTD:j:"),
-		LongOpts: getopt.LongOptStr("release,debug,keep-going,target-platform:,host-platform:,host-platform-flag:"),
+		Opts:     getopt.OptStr("GrdkTD:j:"),
+		LongOpts: getopt.LongOptStr("dump-graph,release,debug,keep-going,target-platform:,host-platform:,host-platform-flag:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -559,6 +559,7 @@ func handleMake(args []string) {
 	targets := []string{}
 	keep := false
 	threads := 1
+	dump := false
 
 	for opt, err := range state.All(config) {
 		if err == getopt.ErrDone {
@@ -569,6 +570,8 @@ func handleMake(args []string) {
 
 		if opt.Char == 'k' || opt.Name == "keep-going" {
 			keep = true
+		} else if opt.Char == 'G' || opt.Name == "dump-graph" {
+			dump = true
 		} else if opt.Char == 'T' {
 			//pass
 		} else if opt.Char == 'D' {
@@ -611,7 +614,13 @@ func handleMake(args []string) {
 
 	proto := parseGraph([]byte(graph))
 
-	newExecutor(proto.Graph, threads, rc).visitAll(proto.Result)
+	if dump {
+		fmt.Println(proto)
+	}
+
+	if threads > 0 {
+		newExecutor(proto.Graph, threads, rc).visitAll(proto.Result)
+	}
 }
 
 func help() {
