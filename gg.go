@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -535,10 +536,14 @@ func (self *Executor) visitAll(uids []string) {
 	wg.Wait()
 }
 
+func calcHostPlatform() string {
+	return runtime.GOOS + "-" + runtime.GOARCH
+}
+
 func handleMake(args []string) {
 	rc := newRenderContext()
 
-	hp := "default-linux-x86_64"
+	hp := "default-" + calcHostPlatform()
 
 	tflags := Flags{
 		"GG_BUILD_TYPE":      "release",
@@ -558,7 +563,7 @@ func handleMake(args []string) {
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:"),
-		LongOpts: getopt.LongOptStr("target-platform:,host-platform:,hpf:"),
+		LongOpts: getopt.LongOptStr("keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
