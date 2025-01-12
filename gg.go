@@ -139,7 +139,6 @@ type Flags map[string]string
 
 func commonFlags(tools *Tools) *Flags {
 	res := Flags{
-		"SANDBOXING":                       "yes",
 		"APPLE_SDK_LOCAL":                  "yes",
 		"CLANG_COVERAGE":                   "no",
 		"CONSISTENT_DEBUG":                 "yes",
@@ -154,7 +153,6 @@ func commonFlags(tools *Tools) *Flags {
 		"USE_PYTHON3":                      "yes",
 		"BUILD_PYTHON_BIN":                 (*tools)["python3"],
 		"BUILD_PYTHON3_BIN":                (*tools)["python3"],
-		"NEED_PLATFORM_PEERDIRS":           "no",
 	}
 
 	for k, v := range *tools {
@@ -535,8 +533,6 @@ func handleMake(args []string) {
 	rc := newRenderContext()
 
 	flags := Flags{
-		"MUSL":               "yes",
-		"USE_ICONV":          "static",
 		"GG_BUILD_TYPE":      "release",
 		"GG_TARGET_PLATFORM": "default-linux-x86_64",
 		"USER_CFLAGS":        os.Getenv("CFLAGS"),
