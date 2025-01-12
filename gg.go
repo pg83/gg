@@ -1,20 +1,20 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"sync"
-	"maps"
 	"bytes"
-	"os/exec"
-	"strings"
-	"strconv"
-	"io/ioutil"
-	"sync/atomic"
-	"path/filepath"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"github.com/jon-codes/getopt"
+	"io/ioutil"
+	"maps"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -24,13 +24,13 @@ const (
 
 var (
 	COLS = map[string]string{
-		"red": ESC + "[91m",
-		"green": ESC + "[92m",
-		"yellow": ESC + "[93m",
-		"blue": ESC + "[94m",
-		"margenta": ESC + "[95m",
-		"cyan": ESC + "[96m",
-		"white": ESC + "[97m",
+		"red":       ESC + "[91m",
+		"green":     ESC + "[92m",
+		"yellow":    ESC + "[93m",
+		"blue":      ESC + "[94m",
+		"margenta":  ESC + "[95m",
+		"cyan":      ESC + "[96m",
+		"white":     ESC + "[97m",
 		"light-red": ESC + "[91m",
 	}
 )
@@ -124,14 +124,14 @@ type Tools map[string]string
 
 func findTools() *Tools {
 	return &Tools{
-		"strip": lookPath("llvm-strip"),
+		"strip":   lookPath("llvm-strip"),
 		"objcopy": lookPath("llvm-objcopy"),
 		"objdump": lookPath("llvm-objdump"),
-		"ar": lookPath("llvm-ar"),
-		"clang": lookPath("clang"),
+		"ar":      lookPath("llvm-ar"),
+		"clang":   lookPath("clang"),
 		"clang++": lookPath("clang++"),
 		"python3": lookPath("python3"),
-		"ymake": lookPath("ymake"),
+		"ymake":   lookPath("ymake"),
 	}
 }
 
@@ -139,37 +139,37 @@ type Flags map[string]string
 
 func commonFlags(tools *Tools) *Flags {
 	res := Flags{
-		"SANDBOXING": "yes",
-		"APPLE_SDK_LOCAL": "yes",
-		"CLANG_COVERAGE": "no",
-		"CONSISTENT_DEBUG": "yes",
+		"SANDBOXING":                       "yes",
+		"APPLE_SDK_LOCAL":                  "yes",
+		"CLANG_COVERAGE":                   "no",
+		"CONSISTENT_DEBUG":                 "yes",
 		"DISABLE_YMAKE_CONF_CUSTOMIZATION": "yes",
-		"NO_DEBUGINFO": "yes",
-		"OPENSOURCE": "yes",
-		"OS_SDK": "local",
-		"TIDY": "no",
-		"USE_ARCADIA_PYTHON": "yes",
-		"USE_CLANG_CL": "yes",
-		"USE_PREBUILT_TOOLS": "no",
-		"USE_PYTHON3": "yes",
-		"BUILD_PYTHON_BIN": (*tools)["python3"],
-		"BUILD_PYTHON3_BIN": (*tools)["python3"],
-		"NEED_PLATFORM_PEERDIRS": "no",
+		"NO_DEBUGINFO":                     "yes",
+		"OPENSOURCE":                       "yes",
+		"OS_SDK":                           "local",
+		"TIDY":                             "no",
+		"USE_ARCADIA_PYTHON":               "yes",
+		"USE_CLANG_CL":                     "yes",
+		"USE_PREBUILT_TOOLS":               "no",
+		"USE_PYTHON3":                      "yes",
+		"BUILD_PYTHON_BIN":                 (*tools)["python3"],
+		"BUILD_PYTHON3_BIN":                (*tools)["python3"],
+		"NEED_PLATFORM_PEERDIRS":           "no",
 	}
 
 	for k, v := range *tools {
 		k = strings.ToUpper(strings.ReplaceAll(k, "+", "_pl"))
 
-		res[k + "_TOOL"] = v
-		res[k + "_TOOL_VENDOR"] = v
+		res[k+"_TOOL"] = v
+		res[k+"_TOOL_VENDOR"] = v
 	}
 
 	return &res
 }
 
 type RenderContext struct {
-	Tools *Tools
-	Flags *Flags
+	Tools   *Tools
+	Flags   *Flags
 	SrcRoot string
 }
 
@@ -186,40 +186,40 @@ func newRenderContext() *RenderContext {
 	root := findRoot()
 
 	return &RenderContext{
-		Tools: tools,
-		Flags: commonFlags(tools),
+		Tools:   tools,
+		Flags:   commonFlags(tools),
 		SrcRoot: root,
 	}
 }
 
 type TCParams struct {
-	C string `json:"c_compiler"`
-	CXX string `json:"cxx_compiler"`
+	C       string `json:"c_compiler"`
+	CXX     string `json:"cxx_compiler"`
 	ObjCopy string `json:"objcopy"`
-	Strip string `json:"strip"`
-	AR string `json:"ar"`
-	Type string `json:"type"`
+	Strip   string `json:"strip"`
+	AR      string `json:"ar"`
+	Type    string `json:"type"`
 	Version string `json:"version"`
 }
 
 type TCPlatform struct {
-	Arch string `json:"arch"`
-	OS string `json:"os"`
+	Arch      string `json:"arch"`
+	OS        string `json:"os"`
 	Toolchain string `json:"toolchain"`
 }
 
 type TCPlatforms struct {
-	Host *TCPlatform `json:"host"`
+	Host   *TCPlatform `json:"host"`
 	Target *TCPlatform `json:"target"`
 }
 
 type TCDescriptor struct {
-	Flags *Flags `json:"flags"`
-	Name string `json:"name"`
-	Params *TCParams `json:"params"`
-	Platform *TCPlatforms `json:"platform"`
-	PlatformName string `json:"platform_name"`
-	BuildType string `json:"build_type"`
+	Flags        *Flags       `json:"flags"`
+	Name         string       `json:"name"`
+	Params       *TCParams    `json:"params"`
+	Platform     *TCPlatforms `json:"platform"`
+	PlatformName string       `json:"platform_name"`
+	BuildType    string       `json:"build_type"`
 }
 
 func (self *TCDescriptor) encode() string {
@@ -239,8 +239,8 @@ func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
 	}
 
 	plat := &TCPlatform{
-		Arch: fields[2],
-		OS: strings.ToUpper(fields[1]),
+		Arch:      fields[2],
+		OS:        strings.ToUpper(fields[1]),
 		Toolchain: fields[0],
 	}
 
@@ -249,22 +249,22 @@ func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
 
 	return &TCDescriptor{
 		Flags: &flags,
-		Name: "clang",
+		Name:  "clang",
 		Params: &TCParams{
-			C: (*self.Tools)["clang"],
-			CXX: (*self.Tools)["clang++"],
+			C:       (*self.Tools)["clang"],
+			CXX:     (*self.Tools)["clang++"],
 			ObjCopy: (*self.Tools)["objcopy"],
-			Strip: (*self.Tools)["strip"],
-			AR: (*self.Tools)["ar"],
-			Type: "clang",
+			Strip:   (*self.Tools)["strip"],
+			AR:      (*self.Tools)["ar"],
+			Type:    "clang",
 			Version: "18",
 		},
 		Platform: &TCPlatforms{
-			Host: plat,
+			Host:   plat,
 			Target: plat,
 		},
 		PlatformName: strings.ToUpper(target),
-		BuildType: flags["GG_BUILD_TYPE"],
+		BuildType:    flags["GG_BUILD_TYPE"],
 	}
 }
 
@@ -282,19 +282,19 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 
 	for k, v := range *tc.Flags {
 		args = append(args, "-D")
-		args = append(args, k + "=" + v)
+		args = append(args, k+"="+v)
 	}
 
-	env := append(os.Environ(), "PYTHONPATH=" + self.SrcRoot + "/contrib/python/six/py3")
+	env := append(os.Environ(), "PYTHONPATH="+self.SrcRoot+"/contrib/python/six/py3")
 
 	var outb bytes.Buffer
 	var errb bytes.Buffer
 
 	cmd := &exec.Cmd{
-		Path: args[0],
-		Args: args,
-		Env: env,
-		Dir: self.SrcRoot,
+		Path:   args[0],
+		Args:   args,
+		Env:    env,
+		Dir:    self.SrcRoot,
 		Stdout: &outb,
 		Stderr: &errb,
 	}
@@ -317,7 +317,7 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 
 	defer os.RemoveAll(td)
 
-	err = ioutil.WriteFile(td + "/conf", conf, 0666)
+	err = ioutil.WriteFile(td+"/conf", conf, 0666)
 
 	throw(err)
 
@@ -334,7 +334,7 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 		"--makefiles-dart", td + "/dart",
 		"--dump-build-plan", "-",
 		"--events", "",
-        }
+	}
 
 	if keepGoing {
 		args = append(args, "--keep-on")
@@ -346,9 +346,9 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 	var errb bytes.Buffer
 
 	cmd := &exec.Cmd{
-		Path: args[0],
-		Args: args,
-		Dir: root,
+		Path:   args[0],
+		Args:   args,
+		Dir:    root,
 		Stdout: &outb,
 		Stderr: &errb,
 	}
@@ -363,24 +363,24 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 }
 
 type Cmd struct {
-	Args []string `json:"cmd_args"`
-	Env map[string]string `json:"env"`
-	StdOut *string `json:"stdout"`
-	CWD *string `json:"cwd"`
+	Args   []string          `json:"cmd_args"`
+	Env    map[string]string `json:"env"`
+	StdOut *string           `json:"stdout"`
+	CWD    *string           `json:"cwd"`
 }
 
 type Node struct {
-	Uid string `json:"uid"`
-	Cmds []Cmd `json:"cmds"`
-	Inputs []string `json:"inputs"`
-	Outputs []string `json:"outputs"`
-	Deps []string `json:"deps"`
-	KV map[string]string `json:"kv"`
-	Env map[string]string `json:"env"`
+	Uid     string            `json:"uid"`
+	Cmds    []Cmd             `json:"cmds"`
+	Inputs  []string          `json:"inputs"`
+	Outputs []string          `json:"outputs"`
+	Deps    []string          `json:"deps"`
+	KV      map[string]string `json:"kv"`
+	Env     map[string]string `json:"env"`
 }
 
 type Proto struct {
-	Graph []Node `json:"graph"`
+	Graph  []Node   `json:"graph"`
 	Result []string `json:"result"`
 }
 
@@ -408,8 +408,8 @@ func (self *Future) callOnce() {
 type Executor struct {
 	ByUid *map[string]*Future
 	Sched *Semaphore
-	Wait atomic.Uint64
-	Done atomic.Uint64
+	Wait  atomic.Uint64
+	Done  atomic.Uint64
 }
 
 func (self *Executor) executeNode(node *Node) {
@@ -534,14 +534,14 @@ func handleMake(args []string) {
 	rc := newRenderContext()
 
 	flags := Flags{
-		"MUSL": "yes",
-		"USE_ICONV": "static",
-		"GG_BUILD_TYPE": "release",
+		"MUSL":               "yes",
+		"USE_ICONV":          "static",
+		"GG_BUILD_TYPE":      "release",
 		"GG_TARGET_PLATFORM": "default-linux-x86_64",
-		"USER_CFLAGS": os.Getenv("CFLAGS"),
-		"USER_CONLYFLAGS": os.Getenv("CONLYFLAGS"),
-		"USER_CXXFLAGS": os.Getenv("CXXFLAGS"),
-		"USER_LDFLAGS": os.Getenv("LDFLAGS"),
+		"USER_CFLAGS":        os.Getenv("CFLAGS"),
+		"USER_CONLYFLAGS":    os.Getenv("CONLYFLAGS"),
+		"USER_CXXFLAGS":      os.Getenv("CXXFLAGS"),
+		"USER_LDFLAGS":       os.Getenv("LDFLAGS"),
 	}
 
 	state := getopt.NewState(args)
