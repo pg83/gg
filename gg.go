@@ -439,8 +439,6 @@ func (self *Executor) executeNode(node *Node) {
 			throw(ioutil.WriteFile(*c.StdOut, res, 0666))
 		}
 	}
-
-	self.Done.Add(1)
 }
 
 func checkExists(path string) bool {
@@ -466,6 +464,8 @@ func (self *Executor) execute(node *Node) {
 
 	self.Wait.Add(1)
 
+	defer self.Done.Add(1)
+
 	self.visitAll(node.Deps)
 	self.executeNode(node)
 
@@ -473,7 +473,7 @@ func (self *Executor) execute(node *Node) {
 		fmtException("node %s not complete", node).throw()
 	}
 
-	done := self.Done.Load()
+	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
 
 	fmt.Printf("[%s] {%d/%d} %s\n", color(node.KV["pc"], node.KV["p"]), done, wait, node.Outputs)
