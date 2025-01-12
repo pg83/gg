@@ -538,13 +538,20 @@ func (self *Executor) visitAll(uids []string) {
 func handleMake(args []string) {
 	rc := newRenderContext()
 
-	flags := Flags{
+	hp := "default-linux-x86_64"
+
+	tflags := Flags{
 		"GG_BUILD_TYPE":      "release",
-		"GG_TARGET_PLATFORM": "default-linux-x86_64",
+		"GG_TARGET_PLATFORM": hp,
 		"USER_CFLAGS":        os.Getenv("CFLAGS"),
 		"USER_CONLYFLAGS":    os.Getenv("CONLYFLAGS"),
 		"USER_CXXFLAGS":      os.Getenv("CXXFLAGS"),
 		"USER_LDFLAGS":       os.Getenv("LDFLAGS"),
+	}
+
+	hflags := Flags{
+		"GG_BUILD_TYPE":      "release",
+		"GG_TARGET_PLATFORM": hp,
 	}
 
 	state := getopt.NewState(args)
@@ -578,9 +585,9 @@ func handleMake(args []string) {
 			fields := strings.Split(opt.OptArg, "=")
 
 			if len(fields) == 1 {
-				flags[fields[0]] = "yes"
+				tflags[fields[0]] = "yes"
 			} else if len(fields) == 2 {
-				flags[fields[0]] = fields[1]
+				tflags[fields[0]] = fields[1]
 			} else {
 				fmtException("malformed flag %s, %s", opt.OptArg).throw()
 			}
@@ -591,13 +598,13 @@ func handleMake(args []string) {
 		} else if opt.Char == 1 {
 			targets = append(targets, opt.OptArg)
 		} else if opt.Char == 'r' || opt.Name == "release" {
-			flags["GG_BUILD_TYPE"] = "release"
+			tflags["GG_BUILD_TYPE"] = "release"
 		} else if opt.Char == 'd' || opt.Name == "debug" {
-			flags["GG_BUILD_TYPE"] = "debug"
+			tflags["GG_BUILD_TYPE"] = "debug"
 		} else if opt.Name == "target-platform" {
-			flags["GG_TARGET_PLATFORM"] = opt.OptArg
+			tflags["GG_TARGET_PLATFORM"] = opt.OptArg
 		} else if opt.Name == "host-platform" {
-			//TODO
+			hflags["GG_TARGET_PLATFORM"] = opt.OptArg
 		} else if opt.Name == "host-platform-flag" {
 			//TODO
 		} else {
@@ -605,7 +612,7 @@ func handleMake(args []string) {
 		}
 	}
 
-	tc := rc.toolChainFor(flags)
+	tc := rc.toolChainFor(tflags)
 	conf := rc.genConfFor(tc)
 	graph := string(rc.genGraphFor(conf, targets, keep))
 
