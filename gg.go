@@ -402,6 +402,7 @@ func (self *Future) callOnce() {
 type Executor struct {
 	ByUid *map[string]*Future
 	Sched *Semaphore
+	RC    *RenderContext
 	Wait  atomic.Uint64
 	Done  atomic.Uint64
 }
@@ -416,7 +417,15 @@ func (self *Executor) executeNode(node *Node) {
 	}
 
 	for _, c := range node.Cmds {
-		res, err := exec.Command(c.Args[0], c.Args[1:]...).CombinedOutput()
+		cmd := exec.Command(c.Args[0], c.Args[1:]...)
+
+		if c.CWD == nil {
+			cmd.Dir = self.RC.SrcRoot
+		} else {
+			cmd.Dir = *c.CWD
+		}
+
+		res, err := cmd.CombinedOutput()
 
 		if err != nil {
 			os.Stdout.Write(res)
@@ -475,12 +484,13 @@ func newNodeFuture(ex *Executor, node *Node) *Future {
 	}}
 }
 
-func newExecutor(nodes []Node, threads int) *Executor {
+func newExecutor(nodes []Node, threads int, rc *RenderContext) *Executor {
 	deps := map[string]*Future{}
 
 	res := &Executor{
 		ByUid: &deps,
 		Sched: newSemaphore(threads),
+		RC:    rc,
 	}
 
 	res.Done.Store(0)
@@ -601,7 +611,7 @@ func handleMake(args []string) {
 
 	proto := parseGraph([]byte(graph))
 
-	newExecutor(proto.Graph, threads).visitAll(proto.Result)
+	newExecutor(proto.Graph, threads, rc).visitAll(proto.Result)
 }
 
 func help() {
