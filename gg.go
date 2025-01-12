@@ -558,7 +558,7 @@ func handleMake(args []string) {
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:"),
-		LongOpts: getopt.LongOptStr("target-platform:,host-platform:,host-platform-flag:"),
+		LongOpts: getopt.LongOptStr("target-platform:,host-platform:,hpf:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -605,7 +605,7 @@ func handleMake(args []string) {
 			tflags["GG_TARGET_PLATFORM"] = opt.OptArg
 		} else if opt.Name == "host-platform" {
 			hflags["GG_TARGET_PLATFORM"] = opt.OptArg
-		} else if opt.Name == "host-platform-flag" {
+		} else if opt.Name == "hpf" {
 			//TODO
 		} else {
 			fmtException("unhandled flag %s", opt.Char).throw()
