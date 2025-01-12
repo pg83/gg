@@ -536,8 +536,28 @@ func (self *Executor) visitAll(uids []string) {
 	wg.Wait()
 }
 
+func calcHostArch() string {
+	if runtime.GOARCH == "amd64" {
+		return "x86_64"
+	}
+
+	if runtime.GOARCH == "arm64" {
+		if runtime.GOOS == "darwin" {
+			return "arm64"
+		}
+
+		if runtime.GOOS == "ios" {
+			return "arm64"
+		}
+
+		return "aarch64"
+	}
+
+	return runtime.GOARCH
+}
+
 func calcHostPlatform() string {
-	return runtime.GOOS + "-" + runtime.GOARCH
+	return runtime.GOOS + "-" + calcHostArch()
 }
 
 func handleMake(args []string) {
