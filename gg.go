@@ -413,7 +413,6 @@ type Executor struct {
 }
 
 func (self *Executor) executeNode(node *Node) {
-	self.Wait.Add(1)
 	self.Sched.acquire()
 
 	defer self.Sched.release()
@@ -460,6 +459,8 @@ func (self *Executor) execute(node *Node) {
 	if complete(node) {
 		return
 	}
+
+	self.Wait.Add(1)
 
 	self.visitAll(node.Deps)
 	self.executeNode(node)
