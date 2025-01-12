@@ -309,15 +309,11 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing bool) []byte {
 	td, err := os.MkdirTemp("", "ymake")
 
-	if err != nil {
-		newException(err).throw()
-	}
+	throw(err)
 
 	defer os.RemoveAll(td)
 
-	err = ioutil.WriteFile(td+"/conf", conf, 0666)
-
-	throw(err)
+	throw(ioutil.WriteFile(td+"/conf", conf, 0666))
 
 	root := self.SrcRoot
 
