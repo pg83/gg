@@ -558,7 +558,7 @@ func handleMake(args []string) {
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:"),
-		LongOpts: getopt.LongOptStr("dump-graph,release,debug,keep-going,target-platform:,host-platform:,host-platform-flag:"),
+		LongOpts: getopt.LongOptStr("target-platform:,host-platform:,host-platform-flag:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
