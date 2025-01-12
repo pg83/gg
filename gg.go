@@ -540,8 +540,10 @@ func handleMake(args []string) {
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts: getopt.OptStr(`rdkTD:j:`),
-		Mode: getopt.ModeInOrder,
+		Opts:     getopt.OptStr("rdkTD:j:"),
+		LongOpts: getopt.LongOptStr("release,debug,keep-going,target-platform:,host-platform:,host-platform-flag:"),
+		Mode:     getopt.ModeInOrder,
+		Func:     getopt.FuncGetOptLong,
 	}
 
 	targets := []string{}
@@ -555,7 +557,7 @@ func handleMake(args []string) {
 
 		throw(err)
 
-		if opt.Char == 'k' {
+		if opt.Char == 'k' || opt.Name == "keep-going" {
 			keep = true
 		} else if opt.Char == 'T' {
 			//pass
@@ -575,10 +577,16 @@ func handleMake(args []string) {
 			threads = i
 		} else if opt.Char == 1 {
 			targets = append(targets, opt.OptArg)
-		} else if opt.Char == 'r' {
+		} else if opt.Char == 'r' || opt.Name == "release" {
 			flags["GG_BUILD_TYPE"] = "release"
-		} else if opt.Char == 'd' {
+		} else if opt.Char == 'd' || opt.Name == "debug" {
 			flags["GG_BUILD_TYPE"] = "debug"
+		} else if opt.Name == "target-platform" {
+			flags["GG_TARGET_PLATFORM"] = opt.OptArg
+		} else if opt.Name == "host-platform" {
+			//TODO
+		} else if opt.Name == "host-platform-flag" {
+			//TODO
 		} else {
 			fmtException("unhandled flag %s", opt.Char).throw()
 		}
