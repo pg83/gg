@@ -549,12 +549,11 @@ func handleMake(args []string) {
 	threads := 1
 
 	for opt, err := range state.All(config) {
-		if err != nil {
-			if err == getopt.ErrDone {
-				break
-			}
-			throw(err)
+		if err == getopt.ErrDone {
+			break
 		}
+
+		throw(err)
 
 		if opt.Char == 'k' {
 			keep = true
