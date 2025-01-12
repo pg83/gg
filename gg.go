@@ -560,6 +560,18 @@ func calcHostPlatform() string {
 	return runtime.GOOS + "-" + calcHostArch()
 }
 
+func (self *Flags) parseInto(kv string) {
+	fields := strings.Split(kv, "=")
+
+	if len(fields) == 1 {
+		(*self)[fields[0]] = "yes"
+	} else if len(fields) == 2 {
+		(*self)[fields[0]] = fields[1]
+	} else {
+		fmtException("malformed flag %s, %s", kv).throw()
+	}
+}
+
 func handleMake(args []string) {
 	rc := newRenderContext()
 
@@ -607,15 +619,7 @@ func handleMake(args []string) {
 		} else if opt.Char == 'T' {
 			//pass
 		} else if opt.Char == 'D' {
-			fields := strings.Split(opt.OptArg, "=")
-
-			if len(fields) == 1 {
-				tflags[fields[0]] = "yes"
-			} else if len(fields) == 2 {
-				tflags[fields[0]] = fields[1]
-			} else {
-				fmtException("malformed flag %s, %s", opt.OptArg).throw()
-			}
+			tflags.parseInto(opt.OptArg)
 		} else if opt.Char == 'j' {
 			i, err := strconv.Atoi(opt.OptArg)
 			throw(err)
@@ -631,7 +635,7 @@ func handleMake(args []string) {
 		} else if opt.Name == "host-platform" {
 			hflags["GG_TARGET_PLATFORM"] = opt.OptArg
 		} else if opt.Name == "hpf" {
-			//TODO
+			hflags.parseInto(opt.OptArg)
 		} else {
 			fmtException("unhandled flag %s", opt.Char).throw()
 		}
