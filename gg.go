@@ -634,6 +634,6 @@ func main() {
 	try(func() {
 		run(os.Args[1:])
 	}).catch(func(exc *Exception) {
-		exc.fatal(1, "abort")
+		exc.fatal(1, "fatal error")
 	})
 }
