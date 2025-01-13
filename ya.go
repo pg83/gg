@@ -464,10 +464,6 @@ func retry(args []string, cwd string, env []string) []byte {
 }
 
 func (self *Executor) executeNode(node *Node) {
-	self.Sched.acquire()
-
-	defer self.Sched.release()
-
 	for _, o := range node.Outputs {
 		throw(os.MkdirAll(filepath.Dir(o), os.ModePerm))
 	}
@@ -562,6 +558,10 @@ func (self *Executor) execute(template *Node) {
 	defer self.Done.Add(1)
 
 	self.visitAll(template.Deps)
+
+	self.Sched.acquire()
+
+	defer self.Sched.release()
 
 	tdir := out + ".tmp"
 
