@@ -519,9 +519,7 @@ func pack(root string, node *Node) []byte {
 	for _, file := range node.Outputs {
 		name := file[14:]
 		path := root + "/" + name
-		body, err := os.ReadFile(path)
-
-		throw(err)
+		body := readFile(path)
 
 		hdr := &tar.Header{
 			Name: name,
@@ -530,7 +528,7 @@ func pack(root string, node *Node) []byte {
 		}
 
 		throw(tw.WriteHeader(hdr))
-		_, err = tw.Write(body)
+		_, err := tw.Write(body)
 		throw(err)
 	}
 
@@ -563,12 +561,16 @@ func unpack(root string, data []byte) {
 	}
 }
 
-func (self *Executor) prepareDep(uid string, where string) {
-	data, err := os.ReadFile(self.RC.BldRoot + "/" + (*self.ByUid)[uid].N.Uid)
+func readFile(path string) []byte {
+	data, err := os.ReadFile(path)
 
 	throw(err)
 
-	unpack(where, data)
+	return data
+}
+
+func (self *Executor) prepareDep(uid string, where string) {
+	unpack(where, readFile(self.RC.BldRoot+"/"+(*self.ByUid)[uid].N.Uid))
 }
 
 func (self *Executor) execute(template *Node) {
