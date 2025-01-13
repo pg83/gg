@@ -444,7 +444,11 @@ func (self *Executor) executeNode(node *Node) {
 			cmd.Dir = *c.CWD
 		}
 
-		cmd.Env = append(os.Environ(), "ARCADIA_ROOT_DISTBUILD="+self.RC.SrcRoot)
+		cmd.Env = os.Environ()
+
+		for k, v := range c.Env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
 
 		res, err := cmd.CombinedOutput()
 
