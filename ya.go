@@ -804,8 +804,6 @@ func handleMake(args []string) {
 		tc := rc.toolChainFor(flags)
 		conf := rc.genConfFor(tc)
 
-		//os.Stdout.Write(conf)
-
 		return loads[Proto](rc.genGraphFor(conf, targets, keep))
 	}
 
