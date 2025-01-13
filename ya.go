@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -430,6 +431,27 @@ type Executor struct {
 	Done  atomic.Uint64
 }
 
+func tryRun(args []string, cwd string, env []string) ([]byte, error) {
+	for {
+		cmd := exec.Command(args[0], args[1:]...)
+
+		cmd.Dir = cwd
+		cmd.Env = env
+
+		res, err := cmd.CombinedOutput()
+
+		if err == nil {
+			return res, nil
+		}
+
+		if strings.Contains(fmt.Sprintf("%s", err), "text file busy") {
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			return nil, err
+		}
+	}
+}
+
 func (self *Executor) executeNode(node *Node) {
 	self.Sched.acquire()
 
@@ -440,25 +462,24 @@ func (self *Executor) executeNode(node *Node) {
 	}
 
 	for _, c := range node.Cmds {
-		cmd := exec.Command(c.Args[0], c.Args[1:]...)
+		args := c.Args
+		dir := self.RC.BldRoot
 
-		if c.CWD == nil {
-			cmd.Dir = self.RC.BldRoot
-		} else {
-			cmd.Dir = *c.CWD
+		if c.CWD != nil {
+			dir = *c.CWD
 		}
 
-		cmd.Env = os.Environ()
+		env := os.Environ()
 
 		for k, v := range node.Env {
-			cmd.Env = append(cmd.Env, k+"="+v)
+			env = append(env, k+"="+v)
 		}
 
 		for k, v := range c.Env {
-			cmd.Env = append(cmd.Env, k+"="+v)
+			env = append(env, k+"="+v)
 		}
 
-		res, err := cmd.CombinedOutput()
+		res, err := tryRun(args, dir, env)
 
 		if err != nil {
 			os.Stdout.Write(res)
