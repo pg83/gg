@@ -830,7 +830,11 @@ func handleMake(args []string) {
 	}
 
 	if threads > 0 {
-		newExecutor(graph, threads, rc).visitAll(tproto.Result)
+		exc := newExecutor(graph, threads, rc)
+		exc.visitAll(tproto.Result)
+		for _, uid := range tproto.Result {
+			exc.prepareDep(uid, exc.RC.SrcRoot)
+		}
 	}
 }
 
