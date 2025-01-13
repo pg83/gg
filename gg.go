@@ -590,15 +590,28 @@ func (self *Flags) parseInto(kv string) {
 	}
 }
 
+// exception-friendly async future
 func async[T any](f func() T) func() T {
-	ch := make(chan T)
+	ch := make(chan interface{})
 
 	go func() {
-		ch <- f()
+		try(func() {
+			ch <- f()
+		}).catch(func(exc *Exception) {
+			ch <- exc
+		})
 	}()
 
 	return func() T {
-		return <-ch
+		switch v := (<-ch).(type) {
+		case T:
+			return v
+		case *Exception:
+			v.throw()
+		default:
+			panic("shit")
+		}
+		panic("shit")
 	}
 }
 
