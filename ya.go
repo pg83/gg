@@ -1,11 +1,13 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/jon-codes/getopt"
+	"io"
 	"io/ioutil"
 	"maps"
 	"os"
@@ -476,23 +478,69 @@ func checkExists(path string) bool {
 	return err == nil
 }
 
-func (self *Executor) prepareDep(uid string, where string) {
-	node := (*self.ByUid)[uid].N
-	from := self.RC.BldRoot + "/" + node.Uid
+func pack(root string, node *Node) []byte {
+	var buf bytes.Buffer
 
-	for _, o := range node.Outputs {
-		fr := from + "/" + o[14:]
-		to := where + "/" + o[14:]
+	tw := tar.NewWriter(&buf)
 
-		throw(os.MkdirAll(filepath.Dir(to), os.ModePerm))
-		throw(os.Link(fr, to))
+	for _, file := range node.Outputs {
+		name := file[14:]
+		body, err := os.ReadFile(root + "/" + name)
+
+		throw(err)
+
+		hdr := &tar.Header{
+			Name: name,
+			Mode: 0600,
+			Size: int64(len(body)),
+		}
+
+		throw(tw.WriteHeader(hdr))
+		_, err = tw.Write(body)
+		throw(err)
+	}
+
+	throw(tw.Close())
+
+	return buf.Bytes()
+}
+
+func unpack(root string, data []byte) {
+	tr := tar.NewReader(bytes.NewBuffer(data))
+
+	for {
+		hdr, err := tr.Next()
+
+		if err == io.EOF {
+			break // End of archive
+		}
+
+		throw(err)
+
+		body, err := ioutil.ReadAll(tr)
+
+		throw(err)
+
+		path := root + "/" + hdr.Name
+		mode := os.FileMode(hdr.Mode)
+
+		throw(os.MkdirAll(filepath.Dir(path), os.ModePerm))
+		throw(ioutil.WriteFile(path, body, mode))
 	}
 }
 
-func (self *Executor) execute(template *Node) {
-	fdir := self.RC.BldRoot + "/" + template.Uid
+func (self *Executor) prepareDep(uid string, where string) {
+	data, err := os.ReadFile(self.RC.BldRoot + "/" + (*self.ByUid)[uid].N.Uid)
 
-	if checkExists(fdir) {
+	throw(err)
+
+	unpack(where, data)
+}
+
+func (self *Executor) execute(template *Node) {
+	out := self.RC.BldRoot + "/" + template.Uid
+
+	if checkExists(out) {
 		return
 	}
 
@@ -502,7 +550,7 @@ func (self *Executor) execute(template *Node) {
 
 	self.visitAll(template.Deps)
 
-	tdir := fdir + ".tmp"
+	tdir := out + ".tmp"
 
 	os.RemoveAll(tdir)
 
@@ -514,7 +562,10 @@ func (self *Executor) execute(template *Node) {
 
 	self.executeNode(mountNode(template, self.RC.SrcRoot, tdir))
 
-	throw(os.Rename(tdir, fdir))
+	res := tdir + "/res"
+
+	throw(ioutil.WriteFile(res, pack(tdir, template), 0666))
+	throw(os.Rename(res, out))
 
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
