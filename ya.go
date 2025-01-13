@@ -446,6 +446,10 @@ func (self *Executor) executeNode(node *Node) {
 
 		cmd.Env = os.Environ()
 
+		for k, v := range node.Env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+
 		for k, v := range c.Env {
 			cmd.Env = append(cmd.Env, k+"="+v)
 		}
