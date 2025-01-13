@@ -1,13 +1,11 @@
 package main
 
 import (
-	"archive/tar"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/jon-codes/getopt"
-	"io"
 	"io/fs"
 	"io/ioutil"
 	"maps"
@@ -513,60 +511,30 @@ func checkExists(path string) bool {
 	return err == nil
 }
 
-func pack(root string, node *Node) []byte {
-	var buf bytes.Buffer
+type Rec map[string][]byte
 
-	tw := tar.NewWriter(&buf)
+func pack(root string, node *Node) []byte {
+	res := Rec{}
 
 	for _, file := range node.Outputs {
 		name := file[14:]
 		path := root + "/" + name
 		body := readFile(path)
 
-		fmt.Fprintf(os.Stderr, "pack %s %d", path, len(body))
-
-		hdr := &tar.Header{
-			Name: name,
-			Mode: int64(stat(path).Mode()),
-			Size: int64(len(body)),
-		}
-
-		throw(tw.WriteHeader(hdr))
-		xxx, err := tw.Write(body)
-		throw(err)
-		fmt.Fprintf(os.Stderr, "pack %s %d", path, xxx)
+		res[name] = body
 	}
 
-	throw(tw.Close())
-
-	return buf.Bytes()
+	return dumps(&res)
 }
 
 func unpack(root string, data []byte) {
-	tr := tar.NewReader(bytes.NewBuffer(data))
+	rec := loads[Rec](data)
 
-	for {
-		hdr, err := tr.Next()
-
-		if err == io.EOF {
-			break // End of archive
-		}
-
-		throw(err)
-
-		fmt.Fprintf(os.Stderr, "unpack %s %s", root, hdr)
-
-		body, err := ioutil.ReadAll(tr)
-
-		throw(err)
-
-		fmt.Fprintf(os.Stderr, "unpack %s %s", root, len(body))
-
-		path := root + "/" + hdr.Name
-		mode := os.FileMode(hdr.Mode)
+	for name, data := range *rec {
+		path := root + "/" + name
 
 		throw(os.MkdirAll(filepath.Dir(path), os.ModePerm))
-		throw(ioutil.WriteFile(path, body, mode))
+		throw(ioutil.WriteFile(path, data, 0777))
 	}
 }
 
