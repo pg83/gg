@@ -195,7 +195,7 @@ func newRenderContext() *RenderContext {
 		Tools:   tools,
 		Flags:   commonFlags(tools),
 		SrcRoot: root,
-		BldRoot: root,
+		BldRoot: root + "/obj",
 	}
 }
 
@@ -362,11 +362,11 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 	return outb.Bytes()
 }
 
-func (self *RenderContext) mountNode(node *Node) *Node {
+func mountNode(node *Node, src string, dst string) *Node {
 	data := dumps(node)
 
-	data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte(self.SrcRoot))
-	data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte(self.BldRoot))
+	data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte(dst))
+	data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte(src))
 
 	return loads[Node](data)
 }
@@ -412,6 +412,7 @@ func dumps[T any](obj *T) []byte {
 type Future struct {
 	F func()
 	O sync.Once
+	N *Node
 }
 
 func (self *Future) callOnce() {
@@ -432,7 +433,7 @@ func (self *Executor) executeNode(node *Node) {
 	defer self.Sched.release()
 
 	for _, o := range node.Outputs {
-		os.MkdirAll(filepath.Dir(o), os.ModePerm)
+		throw(os.MkdirAll(filepath.Dir(o), os.ModePerm))
 	}
 
 	for _, c := range node.Cmds {
@@ -475,20 +476,23 @@ func checkExists(path string) bool {
 	return err == nil
 }
 
-func complete(node *Node) bool {
-	for _, o := range node.Outputs {
-		if !checkExists(o) {
-			return false
-		}
-	}
+func (self *Executor) prepareDep(uid string, where string) {
+	node := (*self.ByUid)[uid].N
+	from := self.RC.BldRoot + "/" + node.Uid
 
-	return true
+	for _, o := range node.Outputs {
+		fr := from + "/" + o[14:]
+		to := where + "/" + o[14:]
+
+		throw(os.MkdirAll(filepath.Dir(to), os.ModePerm))
+		throw(os.Link(fr, to))
+	}
 }
 
 func (self *Executor) execute(template *Node) {
-	node := self.RC.mountNode(template)
+	fdir := self.RC.BldRoot + "/" + template.Uid
 
-	if complete(node) {
+	if checkExists(fdir) {
 		return
 	}
 
@@ -496,23 +500,35 @@ func (self *Executor) execute(template *Node) {
 
 	defer self.Done.Add(1)
 
-	self.visitAll(node.Deps)
-	self.executeNode(node)
+	self.visitAll(template.Deps)
 
-	if !complete(node) {
-		fmtException("node %s not complete", node).throw()
+	tdir := fdir + ".tmp"
+
+	os.RemoveAll(tdir)
+
+	defer os.RemoveAll(tdir)
+
+	for _, uid := range template.Deps {
+		self.prepareDep(uid, tdir)
 	}
+
+	self.executeNode(mountNode(template, self.RC.SrcRoot, tdir))
+
+	throw(os.Rename(tdir, fdir))
 
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
 
-	fmt.Printf("[%s] {%d/%d} %s\n", color(node.KV["pc"], node.KV["p"]), done, wait, template.Outputs)
+	fmt.Printf("[%s] {%d/%d} %s\n", color(template.KV["pc"], template.KV["p"]), done, wait, template.Outputs)
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
-	return &Future{F: func() {
-		ex.execute(node)
-	}}
+	return &Future{
+		F: func() {
+			ex.execute(node)
+		},
+		N: node,
+	}
 }
 
 func newExecutor(nodes []Node, threads int, rc *RenderContext) *Executor {
