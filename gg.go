@@ -466,8 +466,8 @@ func complete(node *Node) bool {
 	return true
 }
 
-func (self *Executor) execute(node *Node) {
-	node = self.RC.mountNode(node)
+func (self *Executor) execute(template *Node) {
+	node := self.RC.mountNode(template)
 
 	if complete(node) {
 		return
@@ -487,7 +487,7 @@ func (self *Executor) execute(node *Node) {
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
 
-	fmt.Printf("[%s] {%d/%d} %s\n", color(node.KV["pc"], node.KV["p"]), done, wait, node.Outputs)
+	fmt.Printf("[%s] {%d/%d} %s\n", color(node.KV["pc"], node.KV["p"]), done, wait, template.Outputs)
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
