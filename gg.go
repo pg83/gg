@@ -584,6 +584,10 @@ func (self *Flags) parseInto(kv string) {
 	}
 }
 
+func async[T any](f func() T) func() T {
+	return f
+}
+
 func handleMake(args []string) {
 	rc := newRenderContext()
 
@@ -660,13 +664,21 @@ func handleMake(args []string) {
 		return loads[Proto](rc.genGraphFor(conf, targets, keep))
 	}
 
-	tproto := gen(tflags)
-	hproto := gen(hflags)
+	tasync := async(func() *Proto {
+		return gen(tflags)
+	})
+
+	hasync := async(func() *Proto {
+		return gen(hflags)
+	})
+
+	tproto := tasync()
+	hproto := hasync()
 
 	graph := merge(tproto.Graph, hproto.Graph)
 
 	if dump {
-		fmt.Println(graph)
+		os.Stdout.Write(dumps(&graph))
 	}
 
 	if threads > 0 {
