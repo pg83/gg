@@ -222,11 +222,7 @@ type TCDescriptor struct {
 }
 
 func (self *TCDescriptor) encode() string {
-	res, err := json.Marshal(*self)
-
-	throw(err)
-
-	return base64.StdEncoding.EncodeToString(res)
+	return base64.StdEncoding.EncodeToString(dumps(self))
 }
 
 func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
@@ -385,6 +381,14 @@ func loads[T any](data []byte) *T {
 	throw(json.Unmarshal(data, &res))
 
 	return &res
+}
+
+func dumps[T any](obj *T) []byte {
+	res, err := json.Marshal(*obj)
+
+	throw(err)
+
+	return res
 }
 
 type Future struct {
