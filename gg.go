@@ -176,6 +176,7 @@ type RenderContext struct {
 	Tools   *Tools
 	Flags   *Flags
 	SrcRoot string
+	BldRoot string
 }
 
 func findRoot() string {
@@ -194,6 +195,7 @@ func newRenderContext() *RenderContext {
 		Tools:   tools,
 		Flags:   commonFlags(tools),
 		SrcRoot: root,
+		BldRoot: root,
 	}
 }
 
@@ -364,7 +366,7 @@ func (self *RenderContext) mountNode(node *Node) *Node {
 	data := dumps(node)
 
 	data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte(self.SrcRoot))
-	data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte(self.SrcRoot))
+	data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte(self.BldRoot))
 
 	return loads[Node](data)
 }
@@ -437,10 +439,12 @@ func (self *Executor) executeNode(node *Node) {
 		cmd := exec.Command(c.Args[0], c.Args[1:]...)
 
 		if c.CWD == nil {
-			cmd.Dir = self.RC.SrcRoot
+			cmd.Dir = self.RC.BldRoot
 		} else {
 			cmd.Dir = *c.CWD
 		}
+
+		cmd.Env = append(os.Environ(), "ARCADIA_ROOT_DISTBUILD="+self.RC.SrcRoot)
 
 		res, err := cmd.CombinedOutput()
 
