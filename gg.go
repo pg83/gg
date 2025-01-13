@@ -379,14 +379,10 @@ type Proto struct {
 	Result []string `json:"result"`
 }
 
-func parseGraph(data []byte) *Proto {
-	var res Proto
+func loads[T any](data []byte) *T {
+	var res T
 
-	err := json.Unmarshal(data, &res)
-
-	if err != nil {
-		fmtException("can not parse ymake graph: %v", err).throw()
-	}
+	throw(json.Unmarshal(data, &res))
 
 	return &res
 }
@@ -645,7 +641,7 @@ func handleMake(args []string) {
 	graph = bytes.ReplaceAll(graph, []byte("$(BUILD_ROOT)"), []byte(rc.SrcRoot))
 	graph = bytes.ReplaceAll(graph, []byte("$(SOURCE_ROOT)"), []byte(rc.SrcRoot))
 
-	proto := parseGraph(graph)
+	proto := loads[Proto](graph)
 
 	if dump {
 		fmt.Println(proto)
