@@ -585,7 +585,15 @@ func (self *Flags) parseInto(kv string) {
 }
 
 func async[T any](f func() T) func() T {
-	return f
+	ch := make(chan T)
+
+	go func() {
+		ch <- f()
+	}()
+
+	return func() T {
+		return <-ch
+	}
 }
 
 func handleMake(args []string) {
@@ -664,6 +672,7 @@ func handleMake(args []string) {
 		return loads[Proto](rc.genGraphFor(conf, targets, keep))
 	}
 
+	// scatter
 	tasync := async(func() *Proto {
 		return gen(tflags)
 	})
@@ -672,9 +681,11 @@ func handleMake(args []string) {
 		return gen(hflags)
 	})
 
+	// gather
 	tproto := tasync()
 	hproto := hasync()
 
+	// merge
 	graph := merge(tproto.Graph, hproto.Graph)
 
 	if dump {
