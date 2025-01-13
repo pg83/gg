@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/jon-codes/getopt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"maps"
 	"os"
@@ -472,6 +473,12 @@ func (self *Executor) executeNode(node *Node) {
 	}
 }
 
+func stat(path string) fs.FileInfo {
+	res, err := os.Stat(path)
+	throw(err)
+	return res
+}
+
 func checkExists(path string) bool {
 	_, err := os.Stat(path)
 
@@ -485,13 +492,14 @@ func pack(root string, node *Node) []byte {
 
 	for _, file := range node.Outputs {
 		name := file[14:]
-		body, err := os.ReadFile(root + "/" + name)
+		path := root + "/" + name
+		body, err := os.ReadFile(path)
 
 		throw(err)
 
 		hdr := &tar.Header{
 			Name: name,
-			Mode: 0600,
+			Mode: int64(stat(path).Mode()),
 			Size: int64(len(body)),
 		}
 
