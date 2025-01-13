@@ -431,7 +431,9 @@ type Executor struct {
 	Done  atomic.Uint64
 }
 
-func tryRun(args []string, cwd string, env []string) ([]byte, error) {
+func retry(args []string, cwd string, env []string) []byte {
+	tout := 1
+
 	for {
 		cmd := exec.Command(args[0], args[1:]...)
 
@@ -441,13 +443,22 @@ func tryRun(args []string, cwd string, env []string) ([]byte, error) {
 		res, err := cmd.CombinedOutput()
 
 		if err == nil {
-			return res, nil
+			return res
 		}
 
+		// https://github.com/golang/go/issues/22220
+		// https://github.com/golang/go/issues/22315
 		if strings.Contains(fmt.Sprintf("%s", err), "text file busy") {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(time.Duration(tout) * time.Millisecond)
+
+			tout = tout * 2
+
+			if tout > 1000 {
+				tout = 1000
+			}
 		} else {
-			return nil, err
+			os.Stdout.Write(res)
+			fmtException("%s: %v", args, err).throw()
 		}
 	}
 }
@@ -478,12 +489,7 @@ func (self *Executor) executeNode(node *Node) {
 			env = append(env, k+"="+v)
 		}
 
-		res, err := tryRun(c.Args, dir, env)
-
-		if err != nil {
-			os.Stdout.Write(res)
-			fmtException("%s: %v", c.Args, err).throw()
-		}
+		res := retry(c.Args, dir, env)
 
 		if c.StdOut == nil {
 			os.Stdout.Write(res)
