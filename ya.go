@@ -435,10 +435,12 @@ func retry(args []string, cwd string, env []string) []byte {
 	tout := 1
 
 	for {
-		cmd := exec.Command(args[0], args[1:]...)
-
-		cmd.Dir = cwd
-		cmd.Env = env
+		cmd := &exec.Cmd{
+			Path: args[0],
+			Args: args,
+			Env:  env,
+			Dir:  cwd,
+		}
 
 		res, err := cmd.CombinedOutput()
 
