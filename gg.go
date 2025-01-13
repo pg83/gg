@@ -353,6 +353,15 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 	return outb.Bytes()
 }
 
+func (self *RenderContext) mountNode(node *Node) *Node {
+	data := dumps(node)
+
+	data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte(self.SrcRoot))
+	data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte(self.SrcRoot))
+
+	return loads[Node](data)
+}
+
 type Cmd struct {
 	Args   []string          `json:"cmd_args"`
 	Env    map[string]string `json:"env"`
@@ -458,6 +467,8 @@ func complete(node *Node) bool {
 }
 
 func (self *Executor) execute(node *Node) {
+	node = self.RC.mountNode(node)
+
 	if complete(node) {
 		return
 	}
@@ -640,19 +651,14 @@ func handleMake(args []string) {
 
 	tc := rc.toolChainFor(tflags)
 	conf := rc.genConfFor(tc)
-	graph := rc.genGraphFor(conf, targets, keep)
-
-	graph = bytes.ReplaceAll(graph, []byte("$(BUILD_ROOT)"), []byte(rc.SrcRoot))
-	graph = bytes.ReplaceAll(graph, []byte("$(SOURCE_ROOT)"), []byte(rc.SrcRoot))
-
-	proto := loads[Proto](graph)
+	graph := loads[Proto](rc.genGraphFor(conf, targets, keep))
 
 	if dump {
-		fmt.Println(proto)
+		fmt.Println(graph)
 	}
 
 	if threads > 0 {
-		newExecutor(proto.Graph, threads, rc).visitAll(proto.Result)
+		newExecutor(graph.Graph, threads, rc).visitAll(graph.Result)
 	}
 }
 
