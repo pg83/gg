@@ -137,6 +137,7 @@ func findTools() *Tools {
 		"clang++": lookPath("clang++"),
 		"python3": lookPath("python3"),
 		"ymake":   lookPath("ymake"),
+		"lld":     lookPath("lld"),
 	}
 }
 
@@ -158,6 +159,7 @@ func commonFlags(tools *Tools) *Flags {
 		"USE_PYTHON3":                      "yes",
 		"BUILD_PYTHON_BIN":                 (*tools)["python3"],
 		"BUILD_PYTHON3_BIN":                (*tools)["python3"],
+		"LLD_ROOT_RESOURCE_GLOBAL":         filepath.Dir(filepath.Dir((*tools)["lld"])),
 	}
 
 	for k, v := range *tools {
@@ -672,6 +674,8 @@ func handleMake(args []string) {
 	gen := func(flags Flags) *Proto {
 		tc := rc.toolChainFor(flags)
 		conf := rc.genConfFor(tc)
+
+		//os.Stdout.Write(conf)
 
 		return loads[Proto](rc.genGraphFor(conf, targets, keep))
 	}
