@@ -523,6 +523,8 @@ func pack(root string, node *Node) []byte {
 		path := root + "/" + name
 		body := readFile(path)
 
+		fmt.Fprintf(os.Stderr, "pack %s %d", path, len(body))
+
 		hdr := &tar.Header{
 			Name: name,
 			Mode: int64(stat(path).Mode()),
@@ -530,8 +532,9 @@ func pack(root string, node *Node) []byte {
 		}
 
 		throw(tw.WriteHeader(hdr))
-		_, err := tw.Write(body)
+		xxx, err := tw.Write(body)
 		throw(err)
+		fmt.Fprintf(os.Stderr, "pack %s %d", path, xxx)
 	}
 
 	throw(tw.Close())
@@ -551,9 +554,13 @@ func unpack(root string, data []byte) {
 
 		throw(err)
 
+		fmt.Fprintf(os.Stderr, "unpack %s %s", root, hdr)
+
 		body, err := ioutil.ReadAll(tr)
 
 		throw(err)
+
+		fmt.Fprintf(os.Stderr, "unpack %s %s", root, len(body))
 
 		path := root + "/" + hdr.Name
 		mode := os.FileMode(hdr.Mode)
