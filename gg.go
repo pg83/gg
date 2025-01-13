@@ -331,6 +331,7 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 		"--makefiles-dart", td + "/dart",
 		"--dump-build-plan", "-",
 		"--events", "",
+		"--xCC", "f:n,d:n,j:n,u:n",
 	}
 
 	if keepGoing {
