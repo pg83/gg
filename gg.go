@@ -23,18 +23,16 @@ const (
 	RST = ESC + "[0m"
 )
 
-var (
-	COLS = map[string]string{
-		"red":       ESC + "[91m",
-		"green":     ESC + "[92m",
-		"yellow":    ESC + "[93m",
-		"blue":      ESC + "[94m",
-		"margenta":  ESC + "[95m",
-		"cyan":      ESC + "[96m",
-		"white":     ESC + "[97m",
-		"light-red": ESC + "[91m",
-	}
-)
+var COLS = map[string]string{
+	"red":       ESC + "[91m",
+	"green":     ESC + "[92m",
+	"yellow":    ESC + "[93m",
+	"blue":      ESC + "[94m",
+	"margenta":  ESC + "[95m",
+	"cyan":      ESC + "[96m",
+	"white":     ESC + "[97m",
+	"light-red": ESC + "[91m",
+}
 
 func color(color string, s string) string {
 	return COLS[color] + s + RST
