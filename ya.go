@@ -1,11 +1,13 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/jon-codes/getopt"
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"maps"
@@ -464,6 +466,10 @@ func retry(args []string, cwd string, env []string) []byte {
 }
 
 func (self *Executor) executeNode(node *Node) {
+	self.Sched.acquire()
+
+	defer self.Sched.release()
+
 	for _, o := range node.Outputs {
 		throw(os.MkdirAll(filepath.Dir(o), os.ModePerm))
 	}
@@ -507,30 +513,53 @@ func checkExists(path string) bool {
 	return err == nil
 }
 
-type Rec map[string][]byte
-
 func pack(root string, node *Node) []byte {
-	res := Rec{}
+	var buf bytes.Buffer
+
+	tw := tar.NewWriter(&buf)
 
 	for _, file := range node.Outputs {
 		name := file[14:]
 		path := root + "/" + name
 		body := readFile(path)
 
-		res[name] = body
+		hdr := &tar.Header{
+			Name: name,
+			Mode: int64(stat(path).Mode()),
+			Size: int64(len(body)),
+		}
+
+		throw(tw.WriteHeader(hdr))
+		_, err := tw.Write(body)
+		throw(err)
 	}
 
-	return dumps(&res)
+	throw(tw.Close())
+
+	return buf.Bytes()
 }
 
 func unpack(root string, data []byte) {
-	rec := loads[Rec](data)
+	tr := tar.NewReader(bytes.NewBuffer(data))
 
-	for name, data := range *rec {
-		path := root + "/" + name
+	for {
+		hdr, err := tr.Next()
+
+		if err == io.EOF {
+			break // End of archive
+		}
+
+		throw(err)
+
+		body, err := ioutil.ReadAll(tr)
+
+		throw(err)
+
+		path := root + "/" + hdr.Name
+		mode := os.FileMode(hdr.Mode)
 
 		throw(os.MkdirAll(filepath.Dir(path), os.ModePerm))
-		throw(ioutil.WriteFile(path, data, 0777))
+		throw(ioutil.WriteFile(path, body, mode))
 	}
 }
 
@@ -558,10 +587,6 @@ func (self *Executor) execute(template *Node) {
 	defer self.Done.Add(1)
 
 	self.visitAll(template.Deps)
-
-	self.Sched.acquire()
-
-	defer self.Sched.release()
 
 	tdir := out + ".tmp"
 
