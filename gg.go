@@ -640,12 +640,12 @@ func handleMake(args []string) {
 
 	tc := rc.toolChainFor(tflags)
 	conf := rc.genConfFor(tc)
-	graph := string(rc.genGraphFor(conf, targets, keep))
+	graph := rc.genGraphFor(conf, targets, keep)
 
-	graph = strings.ReplaceAll(graph, "$(BUILD_ROOT)", rc.SrcRoot)
-	graph = strings.ReplaceAll(graph, "$(SOURCE_ROOT)", rc.SrcRoot)
+	graph = bytes.ReplaceAll(graph, []byte("$(BUILD_ROOT)"), []byte(rc.SrcRoot))
+	graph = bytes.ReplaceAll(graph, []byte("$(SOURCE_ROOT)"), []byte(rc.SrcRoot))
 
-	proto := parseGraph([]byte(graph))
+	proto := parseGraph(graph)
 
 	if dump {
 		fmt.Println(proto)
