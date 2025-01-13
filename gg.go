@@ -24,14 +24,20 @@ const (
 )
 
 var COLS = map[string]string{
-	"red":       ESC + "[91m",
-	"green":     ESC + "[92m",
-	"yellow":    ESC + "[93m",
-	"blue":      ESC + "[94m",
-	"margenta":  ESC + "[95m",
-	"cyan":      ESC + "[96m",
-	"white":     ESC + "[97m",
-	"light-red": ESC + "[91m",
+	"red":           ESC + "[31m",
+	"green":         ESC + "[32m",
+	"yellow":        ESC + "[33m",
+	"blue":          ESC + "[34m",
+	"magenta":       ESC + "[35m",
+	"cyan":          ESC + "[36m",
+	"white":         ESC + "[37m",
+	"light-red":     ESC + "[91m",
+	"light-green":   ESC + "[92m",
+	"light-yellow":  ESC + "[93m",
+	"light-blue":    ESC + "[94m",
+	"light-magenta": ESC + "[95m",
+	"light-cyan":    ESC + "[96m",
+	"light-white":   ESC + "[97m",
 }
 
 func color(color string, s string) string {
