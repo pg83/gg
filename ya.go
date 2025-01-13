@@ -462,7 +462,6 @@ func (self *Executor) executeNode(node *Node) {
 	}
 
 	for _, c := range node.Cmds {
-		args := c.Args
 		dir := self.RC.BldRoot
 
 		if c.CWD != nil {
@@ -479,7 +478,7 @@ func (self *Executor) executeNode(node *Node) {
 			env = append(env, k+"="+v)
 		}
 
-		res, err := tryRun(args, dir, env)
+		res, err := tryRun(c.Args, dir, env)
 
 		if err != nil {
 			os.Stdout.Write(res)
