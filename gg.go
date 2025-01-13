@@ -568,6 +568,10 @@ func calcHostPlatform() string {
 	return runtime.GOOS + "-" + calcHostArch()
 }
 
+func merge(t []Node, h []Node) []Node {
+	return t
+}
+
 func (self *Flags) parseInto(kv string) {
 	fields := strings.Split(kv, "=")
 
@@ -649,16 +653,24 @@ func handleMake(args []string) {
 		}
 	}
 
-	tc := rc.toolChainFor(tflags)
-	conf := rc.genConfFor(tc)
-	graph := loads[Proto](rc.genGraphFor(conf, targets, keep))
+	gen := func(flags Flags) *Proto {
+		tc := rc.toolChainFor(flags)
+		conf := rc.genConfFor(tc)
+
+		return loads[Proto](rc.genGraphFor(conf, targets, keep))
+	}
+
+	tproto := gen(tflags)
+	hproto := gen(hflags)
+
+	graph := merge(tproto.Graph, hproto.Graph)
 
 	if dump {
 		fmt.Println(graph)
 	}
 
 	if threads > 0 {
-		newExecutor(graph.Graph, threads, rc).visitAll(graph.Result)
+		newExecutor(graph, threads, rc).visitAll(tproto.Result)
 	}
 }
 
