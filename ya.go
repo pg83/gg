@@ -186,11 +186,7 @@ type RenderContext struct {
 }
 
 func findRoot() string {
-	res, err := os.Getwd()
-
-	throw(err)
-
-	return res
+	return throw2(os.Getwd())
 }
 
 func newRenderContext() *RenderContext {
@@ -318,9 +314,7 @@ func (self *RenderContext) genConfFor(tc *TCDescriptor) []byte {
 }
 
 func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing bool) []byte {
-	td, err := os.MkdirTemp("", "ymake")
-
-	throw(err)
+	td := throw2(os.MkdirTemp("", "ymake"))
 
 	defer os.RemoveAll(td)
 
@@ -359,7 +353,7 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 		Stderr: &errb,
 	}
 
-	err = cmd.Run()
+	err := cmd.Run()
 
 	if err != nil {
 		fmtException("%s%v", errb.String(), err).throw()
@@ -408,11 +402,7 @@ func loads[T any](data []byte) *T {
 }
 
 func dumps[T any](obj *T) []byte {
-	res, err := json.Marshal(*obj)
-
-	throw(err)
-
-	return res
+	return throw2(json.Marshal(*obj))
 }
 
 type Future struct {
@@ -500,9 +490,7 @@ func executeNode(node *Node, cwd string) {
 }
 
 func stat(path string) fs.FileInfo {
-	res, err := os.Stat(path)
-	throw(err)
-	return res
+	return throw2(os.Stat(path))
 }
 
 func checkExists(path string) bool {
@@ -528,8 +516,7 @@ func pack(root string, node *Node) []byte {
 		}
 
 		throw(tw.WriteHeader(hdr))
-		_, err := tw.Write(body)
-		throw(err)
+		throw2(tw.Write(body))
 	}
 
 	throw(tw.Close())
@@ -549,10 +536,7 @@ func unpack(root string, data []byte) {
 
 		throw(err)
 
-		body, err := ioutil.ReadAll(tr)
-
-		throw(err)
-
+		body := throw2(ioutil.ReadAll(tr))
 		path := root + "/" + hdr.Name
 		mode := os.FileMode(hdr.Mode)
 
@@ -562,11 +546,7 @@ func unpack(root string, data []byte) {
 }
 
 func readFile(path string) []byte {
-	data, err := os.ReadFile(path)
-
-	throw(err)
-
-	return data
+	return throw2(os.ReadFile(path))
 }
 
 func (self *Executor) prepareDep(uid string, where string) {
