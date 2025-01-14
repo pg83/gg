@@ -675,7 +675,12 @@ func calcHostPlatform() string {
 }
 
 func merge(t []Node, h []Node) []Node {
-	return t
+	res := []Node{}
+
+	res = append(res, t...)
+	res = append(res, h...)
+
+	return res
 }
 
 func (self *Flags) parseInto(kv string) {
