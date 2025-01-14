@@ -365,8 +365,8 @@ func (self *RenderContext) genGraphFor(conf []byte, targets []string, keepGoing 
 func mountNode(node *Node, src string, dst string) *Node {
 	data := dumps(node)
 
-	data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte(dst))
-	data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte(src))
+	data = bytes.ReplaceAll(data, []byte("$(B)"), []byte(dst))
+	data = bytes.ReplaceAll(data, []byte("$(S)"), []byte(src))
 
 	return loads[Node](data)
 }
@@ -505,7 +505,7 @@ func pack(root string, node *Node) []byte {
 	tw := tar.NewWriter(&buf)
 
 	for _, file := range node.Outputs {
-		name := file[14:]
+		name := file[5:]
 		path := root + "/" + name
 		body := readFile(path)
 
@@ -785,8 +785,12 @@ func handleMake(args []string) {
 	gen := func(flags Flags) *Proto {
 		tc := rc.toolChainFor(flags)
 		conf := rc.genConfFor(tc)
+		data := rc.genGraphFor(conf, targets, keep)
 
-		return loads[Proto](rc.genGraphFor(conf, targets, keep))
+		data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte("$(B)"))
+		data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte("$(S)"))
+
+		return loads[Proto](data)
 	}
 
 	// scatter
