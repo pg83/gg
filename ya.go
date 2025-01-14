@@ -86,6 +86,12 @@ func throw(err error) {
 	}
 }
 
+func throw2[T any](val T, err error) T {
+	throw(err)
+
+	return val
+}
+
 func try(cb func()) (err *Exception) {
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -122,11 +128,7 @@ func (self *Semaphore) release() {
 }
 
 func lookPath(prog string) string {
-	path, err := exec.LookPath(prog)
-
-	throw(err)
-
-	return path
+	return throw2(exec.LookPath(prog))
 }
 
 type Tools map[string]string
