@@ -571,18 +571,7 @@ func (self *Executor) prepareDep(uid string, where string) {
 	unpack(where, readFile(self.RC.BldRoot+"/"+(*self.ByUid)[uid].N.Uid))
 }
 
-func (self *Executor) execute(template *Node) {
-	out := self.RC.BldRoot + "/" + template.Uid
-
-	if checkExists(out) {
-		return
-	}
-
-	self.Wait.Add(1)
-	defer self.Done.Add(1)
-
-	self.visitAll(template.Deps)
-
+func (self *Executor) execute0(template *Node, out string) {
 	self.Sched.acquire()
 	defer self.Sched.release()
 
@@ -601,6 +590,20 @@ func (self *Executor) execute(template *Node) {
 
 	throw(ioutil.WriteFile(res, pack(tdir, template), 0666))
 	throw(os.Rename(res, out))
+}
+
+func (self *Executor) execute(template *Node) {
+	out := self.RC.BldRoot + "/" + template.Uid
+
+	if checkExists(out) {
+		return
+	}
+
+	self.Wait.Add(1)
+	defer self.Done.Add(1)
+
+	self.visitAll(template.Deps)
+	self.execute0(template, out)
 
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
