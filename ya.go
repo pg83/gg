@@ -465,13 +465,13 @@ func retry(args []string, cwd string, env []string) []byte {
 	}
 }
 
-func (self *Executor) executeNode(node *Node) {
+func executeNode(node *Node, cwd string) {
 	for _, o := range node.Outputs {
 		throw(os.MkdirAll(filepath.Dir(o), os.ModePerm))
 	}
 
 	for _, c := range node.Cmds {
-		dir := self.RC.BldRoot
+		dir := cwd
 
 		if c.CWD != nil {
 			dir = *c.CWD
@@ -584,7 +584,7 @@ func (self *Executor) execute0(template *Node, out string) {
 		self.prepareDep(uid, tdir)
 	}
 
-	self.executeNode(mountNode(template, self.RC.SrcRoot, tdir))
+	executeNode(mountNode(template, self.RC.SrcRoot, tdir), self.RC.BldRoot)
 
 	res := tdir + "/res"
 
