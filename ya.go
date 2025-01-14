@@ -764,9 +764,7 @@ func handleMake(args []string) {
 		} else if opt.Char == 'D' {
 			tflags.parseInto(opt.OptArg)
 		} else if opt.Char == 'j' {
-			i, err := strconv.Atoi(opt.OptArg)
-			throw(err)
-			threads = i
+			threads = throw2(strconv.Atoi(opt.OptArg))
 		} else if opt.Char == 1 {
 			targets = append(targets, opt.OptArg)
 		} else if opt.Char == 'r' || opt.Name == "release" {
