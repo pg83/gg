@@ -593,7 +593,7 @@ func (self *Executor) execute(template *Node) {
 	if self.Ninja {
 		fmt.Printf("%s\n", rec)
 	} else {
-		fmt.Printf("%s", rec+ESC+"2K")
+		fmt.Printf("%s", ESC+"[2K\r"+rec+"\r")
 	}
 }
 
