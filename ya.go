@@ -416,6 +416,7 @@ type Executor struct {
 	ByUid *map[string]*Future
 	Sched *Semaphore
 	RC    *RenderContext
+	Ninja bool
 	Wait  atomic.Uint64
 	Done  atomic.Uint64
 }
@@ -587,7 +588,13 @@ func (self *Executor) execute(template *Node) {
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
 
-	fmt.Printf("[%s] {%d/%d} %s\n", color(template.KV["pc"], template.KV["p"]), done, wait, template.Outputs)
+	rec := fmt.Sprintf("[%s] {%d/%d} %s", color(template.KV["pc"], template.KV["p"]), done, wait, template.Outputs)
+
+	if self.Ninja {
+		fmt.Printf("%s\n", rec)
+	} else {
+		fmt.Printf("%s", rec+ESC+"2K")
+	}
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
@@ -599,13 +606,14 @@ func newNodeFuture(ex *Executor, node *Node) *Future {
 	}
 }
 
-func newExecutor(nodes []Node, threads int, rc *RenderContext) *Executor {
+func newExecutor(nodes []Node, threads int, rc *RenderContext, ninja bool) *Executor {
 	deps := map[string]*Future{}
 
 	res := &Executor{
 		ByUid: &deps,
 		Sched: newSemaphore(threads),
 		RC:    rc,
+		Ninja: ninja,
 	}
 
 	for _, n := range nodes {
@@ -750,6 +758,7 @@ func handleMake(args []string) {
 	sroot := ""
 	broot := ""
 	oroot := ""
+	ninja := false
 
 	for opt, err := range state.All(config) {
 		if err == getopt.ErrDone {
@@ -767,7 +776,7 @@ func handleMake(args []string) {
 		} else if opt.Char == 'B' || opt.Name == "build-dir" {
 			broot = opt.OptArg
 		} else if opt.Char == 'T' {
-			//pass
+			ninja = true
 		} else if opt.Char == 'D' {
 			tflags.parseInto(opt.OptArg)
 		} else if opt.Char == 'j' {
@@ -837,7 +846,7 @@ func handleMake(args []string) {
 	}
 
 	if threads > 0 {
-		exc := newExecutor(graph, threads, rc)
+		exc := newExecutor(graph, threads, rc, ninja)
 
 		exc.visitAll(tproto.Result)
 
