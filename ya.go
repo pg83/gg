@@ -189,15 +189,12 @@ func findRoot() string {
 	return throw2(os.Getwd())
 }
 
-func newRenderContext() *RenderContext {
-	tools := findTools()
-	root := findRoot()
-
+func newRenderContext(tools *Tools, sroot string, broot string) *RenderContext {
 	return &RenderContext{
 		Tools:   tools,
 		Flags:   commonFlags(tools),
-		SrcRoot: root,
-		BldRoot: root + "/obj",
+		SrcRoot: sroot,
+		BldRoot: broot,
 	}
 }
 
@@ -721,8 +718,6 @@ func async[T any](f func() T) func() T {
 }
 
 func handleMake(args []string) {
-	rc := newRenderContext()
-
 	hp := "default-" + calcHostPlatform()
 
 	tflags := Flags{
@@ -742,8 +737,8 @@ func handleMake(args []string) {
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts:     getopt.OptStr("GrdkTD:j:"),
-		LongOpts: getopt.LongOptStr("keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
+		Opts:     getopt.OptStr("GrdkTD:j:B:"),
+		LongOpts: getopt.LongOptStr("build-dir,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -752,6 +747,8 @@ func handleMake(args []string) {
 	keep := false
 	threads := 1
 	dump := false
+	sroot := ""
+	broot := ""
 
 	for opt, err := range state.All(config) {
 		if err == getopt.ErrDone {
@@ -764,6 +761,8 @@ func handleMake(args []string) {
 			keep = true
 		} else if opt.Char == 'G' || opt.Name == "dump-graph" {
 			dump = true
+		} else if opt.Char == 'B' || opt.Name == "build-dir" {
+			broot = opt.OptArg
 		} else if opt.Char == 'T' {
 			//pass
 		} else if opt.Char == 'D' {
@@ -786,6 +785,18 @@ func handleMake(args []string) {
 			fmtException("unhandled flag %s", opt.Char).throw()
 		}
 	}
+
+	if len(sroot) == 0 {
+		sroot = findRoot()
+	}
+
+	if len(broot) == 0 {
+		broot = sroot
+	}
+
+	tools := findTools()
+
+	rc := newRenderContext(tools, sroot, broot)
 
 	gen := func(flags Flags) *Proto {
 		tc := rc.toolChainFor(flags)
