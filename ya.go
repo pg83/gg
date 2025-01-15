@@ -737,8 +737,8 @@ func handleMake(args []string) {
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts:     getopt.OptStr("GrdkTD:j:B:"),
-		LongOpts: getopt.LongOptStr("build-dir,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
+		Opts:     getopt.OptStr("GrdkTD:j:B:o:"),
+		LongOpts: getopt.LongOptStr("output,build-dir,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -749,6 +749,7 @@ func handleMake(args []string) {
 	dump := false
 	sroot := ""
 	broot := ""
+	oroot := ""
 
 	for opt, err := range state.All(config) {
 		if err == getopt.ErrDone {
@@ -761,6 +762,8 @@ func handleMake(args []string) {
 			keep = true
 		} else if opt.Char == 'G' || opt.Name == "dump-graph" {
 			dump = true
+		} else if opt.Char == 'o' || opt.Name == "output" {
+			oroot = opt.OptArg
 		} else if opt.Char == 'B' || opt.Name == "build-dir" {
 			broot = opt.OptArg
 		} else if opt.Char == 'T' {
@@ -792,6 +795,10 @@ func handleMake(args []string) {
 
 	if len(broot) == 0 {
 		broot = sroot
+	}
+
+	if len(oroot) == 0 {
+		oroot = broot
 	}
 
 	tools := findTools()
@@ -831,9 +838,11 @@ func handleMake(args []string) {
 
 	if threads > 0 {
 		exc := newExecutor(graph, threads, rc)
+
 		exc.visitAll(tproto.Result)
+
 		for _, uid := range tproto.Result {
-			exc.prepareDep(uid, exc.RC.SrcRoot)
+			exc.prepareDep(uid, oroot)
 		}
 	}
 }
