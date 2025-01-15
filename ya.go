@@ -746,7 +746,7 @@ func handleMake(args []string) {
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:B:o:I:"),
-		LongOpts: getopt.LongOptStr("install,output,build-dir,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
+		LongOpts: getopt.LongOptStr("xbuild:,install:,output:,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -790,6 +790,8 @@ func handleMake(args []string) {
 			tflags["GG_BUILD_TYPE"] = "release"
 		} else if opt.Char == 'd' || opt.Name == "debug" {
 			tflags["GG_BUILD_TYPE"] = "debug"
+		} else if opt.Name == "xbuild" {
+			tflags["GG_BUILD_TYPE"] = opt.OptArg
 		} else if opt.Name == "target-platform" {
 			tflags["GG_TARGET_PLATFORM"] = opt.OptArg
 		} else if opt.Name == "host-platform" {
