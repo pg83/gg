@@ -745,8 +745,8 @@ func handleMake(args []string) {
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
-		Opts:     getopt.OptStr("GrdkTD:j:B:o:"),
-		LongOpts: getopt.LongOptStr("output,build-dir,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
+		Opts:     getopt.OptStr("GrdkTD:j:B:o:I:"),
+		LongOpts: getopt.LongOptStr("install,output,build-dir,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -758,6 +758,7 @@ func handleMake(args []string) {
 	sroot := ""
 	broot := ""
 	oroot := ""
+	iroot := ""
 	ninja := false
 
 	for opt, err := range state.All(config) {
@@ -773,6 +774,8 @@ func handleMake(args []string) {
 			dump = true
 		} else if opt.Char == 'o' || opt.Name == "output" {
 			oroot = opt.OptArg
+		} else if opt.Char == 'I' || opt.Name == "install" {
+			iroot = opt.OptArg
 		} else if opt.Char == 'B' || opt.Name == "build-dir" {
 			broot = opt.OptArg
 		} else if opt.Char == 'T' {
@@ -808,6 +811,10 @@ func handleMake(args []string) {
 
 	if len(oroot) == 0 {
 		oroot = broot
+	}
+
+	if len(iroot) == 0 {
+		iroot = sroot
 	}
 
 	tools := findTools()
@@ -851,7 +858,7 @@ func handleMake(args []string) {
 		exc.visitAll(tproto.Result)
 
 		for _, uid := range tproto.Result {
-			exc.prepareDep(uid, oroot)
+			exc.prepareDep(uid, iroot)
 		}
 	}
 }
