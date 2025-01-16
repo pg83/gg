@@ -479,7 +479,9 @@ func executeNode(node *Node, cwd string) {
 			dir = *c.CWD
 		}
 
-		env := os.Environ()
+		env := []string{}
+
+		env = append(env, os.Environ()...)
 
 		for k, v := range node.Env {
 			env = append(env, k+"="+v)
@@ -820,7 +822,7 @@ func handleMake(args []string) {
 	}
 
 	if len(broot) == 0 {
-		broot = sroot
+		broot = sroot + "/obj"
 	}
 
 	if len(oroot) == 0 {
