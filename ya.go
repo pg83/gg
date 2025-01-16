@@ -743,6 +743,39 @@ func merge(t []Node, h []Node) []Node {
 	return nodes
 }
 
+func prune(nodes []Node, roots []string) []Node {
+	byUid := map[string]Node{}
+
+	for _, n := range nodes {
+		byUid[n.Uid] = n
+	}
+
+	res := []Node{}
+	vis := map[string]bool{}
+
+	var visit func(uid string)
+
+	visit = func(uid string) {
+		if _, ok := vis[uid]; ok {
+			return
+		}
+
+		vis[uid] = true
+		n := byUid[uid]
+		res = append(res, n)
+
+		for _, d := range n.Deps {
+			visit(d)
+		}
+	}
+
+	for _, d := range roots {
+		visit(d)
+	}
+
+	return res
+}
+
 func (self *Flags) parseInto(kv string) {
 	fields := strings.Split(kv, "=")
 
@@ -917,7 +950,7 @@ func handleMake(args []string) {
 	hproto := hasync()
 
 	// merge
-	graph := merge(tproto.Graph, hproto.Graph)
+	graph := prune(merge(tproto.Graph, hproto.Graph), tproto.Result)
 
 	if dump {
 		os.Stdout.Write(dumps(&graph))
