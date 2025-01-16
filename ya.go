@@ -1,8 +1,8 @@
 package main
 
 import (
-	"archive/tar"
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -516,49 +516,47 @@ func checkExists(path string) bool {
 	return err == nil
 }
 
-func pack(root string, node *Node) []byte {
-	var buf bytes.Buffer
-
-	tw := tar.NewWriter(&buf)
-
-	for _, file := range node.Outputs {
-		name := file[5:]
-		path := root + "/" + name
-		body := readFile(path)
-
-		hdr := &tar.Header{
-			Name: name,
-			Mode: int64(stat(path).Mode()),
-			Size: int64(len(body)),
-		}
-
-		throw(tw.WriteHeader(hdr))
-		throw2(tw.Write(body))
-	}
-
-	throw(tw.Close())
-
-	return buf.Bytes()
+type Cache struct {
+	where string
 }
 
-func unpack(root string, data []byte) {
-	tr := tar.NewReader(bytes.NewBuffer(data))
+func calcSha256(path string) string {
+	h := sha256.New()
+	throw2(io.Copy(h, throw2(os.Open(path))))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
 
-	for {
-		hdr, err := tr.Next()
+func (self *Cache) storeCas(path string) string {
+	to := self.where + "/cas/" + calcSha256(path)
+	throw(os.MkdirAll(filepath.Dir(to), os.ModePerm))
+	throw(os.Rename(path, to))
+	return to
+}
 
-		if err == io.EOF {
-			break // End of archive
-		}
+type Meta map[string]string
 
-		throw(err)
+func (self *Cache) store(root string, node *Node) {
+	meta := Meta{}
 
-		body := throw2(ioutil.ReadAll(tr))
-		path := root + "/" + hdr.Name
-		mode := os.FileMode(hdr.Mode)
+	for _, o := range node.Outputs {
+		path := root + "/" + o[5:]
+		meta[o] = self.storeCas(path)
+	}
 
+	path := self.where + "/uid/" + node.Uid
+
+	throw(os.MkdirAll(filepath.Dir(path), os.ModePerm))
+	throw(ioutil.WriteFile(path+".tmp", dumps(&meta), 0666))
+	throw(os.Rename(path+".tmp", path))
+}
+
+func (self *Cache) restore(root string, node *Node) {
+	meta := loads[Meta](readFile(self.where + "/uid/" + node.Uid))
+	for _, o := range node.Outputs {
+		path := root + "/" + o[5:]
 		throw(os.MkdirAll(filepath.Dir(path), os.ModePerm))
-		throw(ioutil.WriteFile(path, body, mode))
+		os.Remove(path)
+		throw(os.Symlink((*meta)[o], path))
 	}
 }
 
@@ -567,34 +565,33 @@ func readFile(path string) []byte {
 }
 
 func (self *Executor) prepareDep(uid string, where string) {
-	unpack(where, readFile(self.RC.BldRoot+"/"+(*self.ByUid)[uid].N.Uid))
+	(&Cache{
+		where: self.RC.BldRoot,
+	}).restore(where, (*self.ByUid)[uid].N)
 }
 
 func (self *Executor) execute0(template *Node, out string) {
 	self.Sched.acquire()
 	defer self.Sched.release()
 
-	tdir := out + ".tmp"
-
-	os.RemoveAll(tdir)
-	defer os.RemoveAll(tdir)
+	os.RemoveAll(out)
+	defer os.RemoveAll(out)
 
 	for _, uid := range template.Deps {
-		self.prepareDep(uid, tdir)
+		self.prepareDep(uid, out)
 	}
 
-	executeNode(mountNode(template, self.RC.SrcRoot, tdir), self.RC.BldRoot)
+	executeNode(mountNode(template, self.RC.SrcRoot, out), self.RC.BldRoot)
 
-	res := tdir + "/res"
-
-	throw(ioutil.WriteFile(res, pack(tdir, template), 0666))
-	throw(os.Rename(res, out))
+	(&Cache{
+		where: self.RC.BldRoot,
+	}).store(out, template)
 }
 
 func (self *Executor) execute(template *Node) {
-	out := self.RC.BldRoot + "/" + template.Uid
+	tmp := self.RC.BldRoot + "/uid/" + template.Uid
 
-	if checkExists(out) {
+	if checkExists(tmp) {
 		return
 	}
 
@@ -602,6 +599,9 @@ func (self *Executor) execute(template *Node) {
 	defer self.Done.Add(1)
 
 	self.visitAll(template.Deps)
+
+	out := self.RC.BldRoot + "/tmp/" + template.Uid
+
 	self.execute0(template, out)
 
 	done := self.Done.Load() + 1
