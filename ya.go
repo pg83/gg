@@ -382,8 +382,8 @@ func mountNode(node *Node, src string, dst string) *Node {
 type Cmd struct {
 	Args   []string          `json:"cmd_args"`
 	Env    map[string]string `json:"env"`
-	StdOut *string           `json:"stdout"`
-	CWD    *string           `json:"cwd"`
+	StdOut *string           `json:"stdout,omitempty"`
+	CWD    *string           `json:"cwd,omitempty"`
 }
 
 type ForeignDeps struct {
@@ -398,7 +398,7 @@ type Node struct {
 	Deps    []string          `json:"deps"`
 	KV      map[string]string `json:"kv"`
 	Env     map[string]string `json:"env"`
-	FD      *ForeignDeps      `json:"foreign_deps"`
+	FD      *ForeignDeps      `json:"foreign_deps,omitempty"`
 }
 
 type Proto struct {
