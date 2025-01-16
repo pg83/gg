@@ -186,7 +186,19 @@ type RenderContext struct {
 }
 
 func findRoot() string {
-	return throw2(os.Getwd())
+	cwd := throw2(os.Getwd())
+
+	for len(cwd) > 0 {
+		if checkExists(cwd + "/.arcadia.root") {
+			return cwd
+		}
+
+		cwd = filepath.Dir(cwd)
+	}
+
+	fmtException("can not find source root").throw()
+
+	return ""
 }
 
 func newRenderContext(tools *Tools, sroot string, broot string) *RenderContext {
