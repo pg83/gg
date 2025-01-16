@@ -945,6 +945,10 @@ func handleMake(args []string) {
 
 		exc.visitAll(tproto.Result)
 
+		if ninja {
+			os.Stdout.Write([]byte("\n"))
+		}
+
 		for _, uid := range tproto.Result {
 			exc.prepareDep(uid, iroot)
 		}
