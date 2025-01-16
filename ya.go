@@ -831,6 +831,11 @@ func handleMake(args []string) {
 		iroot = sroot
 	}
 
+	if len(targets) == 0 {
+		cwd := throw2(os.Getwd())
+		targets = append(targets, cwd[len(sroot)+1:])
+	}
+
 	tools := findTools()
 
 	rc := newRenderContext(tools, sroot, broot)
