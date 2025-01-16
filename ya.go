@@ -387,6 +387,10 @@ type Cmd struct {
 	CWD    *string           `json:"cwd"`
 }
 
+type ForeignDeps struct {
+	Tool []string `json:"tool"`
+}
+
 type Node struct {
 	Uid     string            `json:"uid"`
 	Cmds    []Cmd             `json:"cmds"`
@@ -395,6 +399,7 @@ type Node struct {
 	Deps    []string          `json:"deps"`
 	KV      map[string]string `json:"kv"`
 	Env     map[string]string `json:"env"`
+	FD      *ForeignDeps      `json:"foreign_deps"`
 }
 
 type Proto struct {
@@ -694,12 +699,46 @@ func calcHostPlatform() string {
 }
 
 func merge(t []Node, h []Node) []Node {
-	res := []Node{}
+	nodes := []Node{}
 
-	res = append(res, t...)
-	res = append(res, h...)
+	nodes = append(nodes, t...)
+	nodes = append(nodes, h...)
 
-	return res
+	byUid := map[string]Node{}
+
+	for _, n := range nodes {
+		byUid[n.Uid] = n
+	}
+
+	byOut := map[string]Node{}
+
+	for _, n := range h {
+		for _, o := range n.Outputs {
+			byOut[o] = n
+		}
+	}
+
+	for _, n := range t {
+		if n.FD == nil {
+			continue
+		}
+
+		remap := map[string]string{}
+
+		for _, tn := range n.FD.Tool {
+			for _, bin := range byUid[tn].Outputs {
+				remap[tn] = byOut[bin].Uid
+			}
+		}
+
+		for i, from := range n.Deps {
+			if to, ok := remap[from]; ok {
+				n.Deps[i] = to
+			}
+		}
+	}
+
+	return nodes
 }
 
 func (self *Flags) parseInto(kv string) {
@@ -835,7 +874,14 @@ func handleMake(args []string) {
 
 	if len(targets) == 0 {
 		cwd := throw2(os.Getwd())
-		targets = append(targets, cwd[len(sroot)+1:])
+
+		if len(sroot) < len(cwd) {
+			targets = append(targets, cwd[len(sroot)+1:])
+		}
+	}
+
+	if len(targets) == 0 {
+		fmtException("nothing to build").throw()
 	}
 
 	tools := findTools()
@@ -849,6 +895,8 @@ func handleMake(args []string) {
 
 		data = bytes.ReplaceAll(data, []byte("$(BUILD_ROOT)"), []byte("$(B)"))
 		data = bytes.ReplaceAll(data, []byte("$(SOURCE_ROOT)"), []byte("$(S)"))
+
+		// os.Stdout.Write(data)
 
 		return loads[Proto](data)
 	}
