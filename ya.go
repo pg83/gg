@@ -19,7 +19,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 const (
@@ -438,38 +437,23 @@ type Executor struct {
 	Done  atomic.Uint64
 }
 
-func retry(args []string, cwd string, env []string) []byte {
-	tout := 1
-
-	for {
-		cmd := &exec.Cmd{
-			Path: args[0],
-			Args: args,
-			Env:  env,
-			Dir:  cwd,
-		}
-
-		res, err := cmd.CombinedOutput()
-
-		if err == nil {
-			return res
-		}
-
-		// https://github.com/golang/go/issues/22220
-		// https://github.com/golang/go/issues/22315
-		if strings.Contains(fmt.Sprintf("%s", err), "text file busy") {
-			time.Sleep(time.Duration(tout) * time.Millisecond)
-
-			tout = tout * 2
-
-			if tout > 1000 {
-				tout = 1000
-			}
-		} else {
-			os.Stdout.Write(res)
-			fmtException("%s: %v", args, err).throw()
-		}
+func runCommand(args []string, cwd string, env []string) []byte {
+	cmd := &exec.Cmd{
+		Path: args[0],
+		Args: args,
+		Env:  env,
+		Dir:  cwd,
 	}
+
+	res, err := cmd.CombinedOutput()
+
+	if err == nil {
+		return res
+	}
+
+	os.Stdout.Write(res)
+	fmtException("%s: %v", args, err).throw()
+	return nil
 }
 
 func executeNode(node *Node, cwd string) {
@@ -496,7 +480,7 @@ func executeNode(node *Node, cwd string) {
 			env = append(env, k+"="+v)
 		}
 
-		res := retry(c.Args, dir, env)
+		res := runCommand(c.Args, dir, env)
 
 		if c.StdOut == nil {
 			os.Stdout.Write(res)
