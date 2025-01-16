@@ -552,8 +552,10 @@ func (self *Cache) store(root string, node *Node) {
 
 func (self *Cache) restore(root string, node *Node) {
 	meta := loads[Meta](readFile(self.where + "/uid/" + node.Uid))
+
 	for _, o := range node.Outputs {
 		path := root + "/" + o[5:]
+
 		throw(os.MkdirAll(filepath.Dir(path), os.ModePerm))
 		os.Remove(path)
 		throw(os.Symlink((*meta)[o], path))
