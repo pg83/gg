@@ -806,7 +806,7 @@ func handleMake(args []string) {
 
 	targets := []string{}
 	keep := false
-	threads := 1
+	threads := runtime.NumCPU()
 	dump := false
 	sroot := ""
 	broot := ""
