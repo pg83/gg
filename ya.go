@@ -884,7 +884,7 @@ func handleMake(args []string) {
 	}
 
 	if len(oroot) == 0 {
-		oroot = broot
+		oroot = broot + "/res"
 	}
 
 	if len(iroot) == 0 {
