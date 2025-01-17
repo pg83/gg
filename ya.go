@@ -187,7 +187,7 @@ type RenderContext struct {
 func findRoot() string {
 	cwd := throw2(os.Getwd())
 
-	for len(cwd) > 0 {
+	for len(cwd) > 1 {
 		if checkExists(cwd + "/.arcadia.root") {
 			return cwd
 		}
@@ -813,6 +813,9 @@ func handleMake(args []string) {
 		"GG_BUILD_TYPE":      "release",
 		"GG_TARGET_PLATFORM": hp,
 	}
+
+	// https://github.com/jon-codes/getopt/issues/2
+	args = *loads[[]string](bytes.ReplaceAll(dumps(&args), []byte("--host-platform-flag"), []byte("--hpf")))
 
 	state := getopt.NewState(args)
 
