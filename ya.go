@@ -814,14 +814,11 @@ func handleMake(args []string) {
 		"GG_TARGET_PLATFORM": hp,
 	}
 
-	// https://github.com/jon-codes/getopt/issues/2
-	args = *loads[[]string](bytes.ReplaceAll(dumps(&args), []byte("--host-platform-flag"), []byte("--hpf")))
-
 	state := getopt.NewState(args)
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:B:o:I:"),
-		LongOpts: getopt.LongOptStr("xbuild:,install:,output:,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,hpf:"),
+		LongOpts: getopt.LongOptStr("xbuild:,install:,output:,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,host-platform-flag:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -871,7 +868,7 @@ func handleMake(args []string) {
 			tflags["GG_TARGET_PLATFORM"] = opt.OptArg
 		} else if opt.Name == "host-platform" {
 			hflags["GG_TARGET_PLATFORM"] = opt.OptArg
-		} else if opt.Name == "hpf" {
+		} else if opt.Name == "host-platform-flag" {
 			hflags.parseInto(opt.OptArg)
 		} else {
 			fmtException("unhandled flag %s", opt.Char).throw()
