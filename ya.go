@@ -153,7 +153,6 @@ func commonFlags(tools *Tools) *Flags {
 		"APPLE_SDK_LOCAL":                  "yes",
 		"CLANG_COVERAGE":                   "no",
 		"CONSISTENT_DEBUG":                 "yes",
-		"DISABLE_YMAKE_CONF_CUSTOMIZATION": "yes",
 		"NO_DEBUGINFO":                     "yes",
 		"OPENSOURCE":                       "yes",
 		"OS_SDK":                           "local",
