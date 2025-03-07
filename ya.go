@@ -558,7 +558,7 @@ func (self *Executor) prepareDep(uid string, where string) {
 	}).restore(where, (*self.ByUid)[uid].N)
 }
 
-func (self *Executor) execute0(template *Node, out string) {
+func (self *Executor) execute0(template *Node, out string) time.Duration {
 	self.Sched.acquire()
 	defer self.Sched.release()
 
@@ -569,11 +569,15 @@ func (self *Executor) execute0(template *Node, out string) {
 		self.prepareDep(uid, out)
 	}
 
+	beg := time.Now()
 	executeNode(mountNode(template, self.RC.SrcRoot, out), self.RC.BldRoot)
+	end := time.Now()
 
 	(&Cache{
 		where: self.RC.BldRoot,
 	}).store(out, template)
+
+	return end.Sub(beg)
 }
 
 func (self *Executor) execute(template *Node) {
@@ -590,9 +594,7 @@ func (self *Executor) execute(template *Node) {
 
 	out := self.RC.BldRoot + "/tmp/" + template.Uid
 
-	begin := time.Now()
-	self.execute0(template, out)
-	end := time.Now()
+	dur := self.execute0(template, out)
 
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
@@ -601,7 +603,7 @@ func (self *Executor) execute(template *Node) {
 	rec := fmt.Sprintf("[%s] {%d/%d} %s", col, done, wait, template.Outputs)
 
 	self.Events <- func() {
-		self.processStat(col, end.Sub(begin))
+		self.processStat(col, dur)
 	}
 
 	if self.Ninja {
