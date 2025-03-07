@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"sync/atomic"
 )
 
@@ -434,6 +435,8 @@ type Executor struct {
 	Ninja bool
 	Wait  atomic.Uint64
 	Done  atomic.Uint64
+	Events chan func()
+	Stats map[string][]time.Duration
 }
 
 func runCommand(args []string, cwd string, env []string) []byte {
@@ -587,18 +590,29 @@ func (self *Executor) execute(template *Node) {
 
 	out := self.RC.BldRoot + "/tmp/" + template.Uid
 
+	begin := time.Now()
 	self.execute0(template, out)
+	end := time.Now()
 
 	done := self.Done.Load() + 1
 	wait := self.Wait.Load()
 
-	rec := fmt.Sprintf("[%s] {%d/%d} %s", color(template.KV["pc"], template.KV["p"]), done, wait, template.Outputs)
+	col := color(template.KV["pc"], template.KV["p"])
+	rec := fmt.Sprintf("[%s] {%d/%d} %s", col, done, wait, template.Outputs)
+
+	self.Events <- func() {
+		self.processStat(col, end.Sub(begin))
+	}
 
 	if self.Ninja {
 		fmt.Printf("%s\n", rec)
 	} else {
 		fmt.Printf("%s", ESC+"[2K\r"+rec+"\r")
 	}
+}
+
+func (self *Executor) processStat(typ string, dur time.Duration) {
+	self.Stats[typ] = append(self.Stats[typ], dur)
 }
 
 func newNodeFuture(ex *Executor, node *Node) *Future {
@@ -610,7 +624,7 @@ func newNodeFuture(ex *Executor, node *Node) *Future {
 	}
 }
 
-func newExecutor(nodes []Node, threads int, rc *RenderContext, ninja bool) *Executor {
+func newExecutor(nodes []Node, threads int, rc *RenderContext, ninja bool, events chan func()) *Executor {
 	deps := map[string]*Future{}
 
 	res := &Executor{
@@ -618,6 +632,8 @@ func newExecutor(nodes []Node, threads int, rc *RenderContext, ninja bool) *Exec
 		Sched: newSemaphore(threads),
 		RC:    rc,
 		Ninja: ninja,
+		Events: events,
+		Stats: map[string][]time.Duration{},
 	}
 
 	for _, n := range nodes {
@@ -817,7 +833,7 @@ func handleMake(args []string) {
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:B:o:I:"),
-		LongOpts: getopt.LongOptStr("xbuild:,install:,output:,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,host-platform-flag:"),
+		LongOpts: getopt.LongOptStr("xbuild:,install:,output:,stats,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,host-platform-flag:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -831,6 +847,7 @@ func handleMake(args []string) {
 	oroot := ""
 	iroot := ""
 	ninja := false
+	stats := false
 
 	for opt, err := range state.All(config) {
 		if err == getopt.ErrDone {
@@ -843,6 +860,8 @@ func handleMake(args []string) {
 			keep = true
 		} else if opt.Char == 'G' || opt.Name == "dump-graph" {
 			dump = true
+		} else if opt.Name == "stats" {
+			stats = true
 		} else if opt.Char == 'o' || opt.Name == "output" {
 			oroot = opt.OptArg
 		} else if opt.Char == 'I' || opt.Name == "install" {
@@ -940,9 +959,22 @@ func handleMake(args []string) {
 	}
 
 	if threads > 0 {
-		exc := newExecutor(graph, threads, rc, ninja)
+		events := make(chan func())
+
+		efunc := async(func() int {
+			for f := range events {
+				f()
+			}
+
+			return 0
+		})
+
+		exc := newExecutor(graph, threads, rc, ninja, events)
 
 		exc.visitAll(tproto.Result)
+
+		close(events)
+		efunc()
 
 		if ninja {
 			os.Stdout.Write([]byte("\n"))
@@ -950,6 +982,12 @@ func handleMake(args []string) {
 
 		for _, uid := range tproto.Result {
 			exc.prepareDep(uid, iroot)
+		}
+
+		if stats {
+			for k, v := range exc.Stats {
+				fmt.Println(k, v)
+			}
 		}
 	}
 }
