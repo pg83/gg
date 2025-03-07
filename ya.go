@@ -814,6 +814,14 @@ func async[T any](f func() T) func() T {
 	}
 }
 
+func calcMean(l []time.Duration) time.Duration {
+	sum := int64(0)
+	for _, v := range l {
+		sum += v.Nanoseconds()
+	}
+	return time.Duration(sum / int64(len(l)))
+}
+
 func handleMake(args []string) {
 	hp := "default-" + calcHostPlatform()
 
@@ -988,7 +996,7 @@ func handleMake(args []string) {
 
 		if stats {
 			for k, v := range exc.Stats {
-				fmt.Println(k, v)
+				fmt.Println(k, calcMean(v))
 			}
 		}
 	}
