@@ -996,7 +996,7 @@ func handleMake(args []string) {
 
 		if stats {
 			for k, v := range exc.Stats {
-				fmt.Println(k, calcMean(v))
+				fmt.Printf("[%s] -> count = %d, mean = %v\n", k, len(v), calcMean(v))
 			}
 		}
 	}
