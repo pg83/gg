@@ -983,9 +983,6 @@ func handleMake(args []string) {
 
 		exc.visitAll(tproto.Result)
 
-		close(events)
-		efunc()
-
 		if ninja {
 			os.Stdout.Write([]byte("\n"))
 		}
@@ -993,6 +990,9 @@ func handleMake(args []string) {
 		for _, uid := range tproto.Result {
 			exc.prepareDep(uid, iroot)
 		}
+
+		close(events)
+		efunc()
 
 		if stats {
 			for k, v := range exc.Stats {
