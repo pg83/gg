@@ -969,7 +969,7 @@ func handleMake(args []string) {
 	}
 
 	if threads > 0 {
-		events := make(chan func())
+		events := make(chan func(), 10000)
 
 		efunc := async(func() int {
 			for f := range events {
