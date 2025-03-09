@@ -18,8 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -151,20 +151,20 @@ type Flags map[string]string
 
 func commonFlags(tools *Tools) *Flags {
 	res := Flags{
-		"APPLE_SDK_LOCAL":                  "yes",
-		"CLANG_COVERAGE":                   "no",
-		"CONSISTENT_DEBUG":                 "yes",
-		"NO_DEBUGINFO":                     "yes",
-		"OPENSOURCE":                       "yes",
-		"OS_SDK":                           "local",
-		"TIDY":                             "no",
-		"USE_ARCADIA_PYTHON":               "yes",
-		"USE_CLANG_CL":                     "yes",
-		"USE_PREBUILT_TOOLS":               "no",
-		"USE_PYTHON3":                      "yes",
-		"BUILD_PYTHON_BIN":                 (*tools)["python3"],
-		"BUILD_PYTHON3_BIN":                (*tools)["python3"],
-		"LLD_ROOT_RESOURCE_GLOBAL":         filepath.Dir(filepath.Dir((*tools)["lld"])),
+		"APPLE_SDK_LOCAL":          "yes",
+		"CLANG_COVERAGE":           "no",
+		"CONSISTENT_DEBUG":         "yes",
+		"NO_DEBUGINFO":             "yes",
+		"OPENSOURCE":               "yes",
+		"OS_SDK":                   "local",
+		"TIDY":                     "no",
+		"USE_ARCADIA_PYTHON":       "yes",
+		"USE_CLANG_CL":             "yes",
+		"USE_PREBUILT_TOOLS":       "no",
+		"USE_PYTHON3":              "yes",
+		"BUILD_PYTHON_BIN":         (*tools)["python3"],
+		"BUILD_PYTHON3_BIN":        (*tools)["python3"],
+		"LLD_ROOT_RESOURCE_GLOBAL": filepath.Dir(filepath.Dir((*tools)["lld"])),
 	}
 
 	for k, v := range *tools {
@@ -429,14 +429,14 @@ func (self *Future) callOnce() {
 }
 
 type Executor struct {
-	ByUid *map[string]*Future
-	Sched *Semaphore
-	RC    *RenderContext
-	Ninja bool
-	Wait  atomic.Uint64
-	Done  atomic.Uint64
+	ByUid  *map[string]*Future
+	Sched  *Semaphore
+	RC     *RenderContext
+	Ninja  bool
+	Wait   atomic.Uint64
+	Done   atomic.Uint64
 	Events chan func()
-	Stats map[string][]time.Duration
+	Stats  map[string][]time.Duration
 }
 
 func runCommand(args []string, cwd string, env []string) []byte {
@@ -630,12 +630,12 @@ func newExecutor(nodes []Node, threads int, rc *RenderContext, ninja bool, event
 	deps := map[string]*Future{}
 
 	res := &Executor{
-		ByUid: &deps,
-		Sched: newSemaphore(threads),
-		RC:    rc,
-		Ninja: ninja,
+		ByUid:  &deps,
+		Sched:  newSemaphore(threads),
+		RC:     rc,
+		Ninja:  ninja,
 		Events: events,
-		Stats: map[string][]time.Duration{},
+		Stats:  map[string][]time.Duration{},
 	}
 
 	for _, n := range nodes {
@@ -814,12 +814,12 @@ func async[T any](f func() T) func() T {
 	}
 }
 
-func calcMean(l []time.Duration) time.Duration {
+func calcSum(l []time.Duration) time.Duration {
 	sum := int64(0)
 	for _, v := range l {
 		sum += v.Nanoseconds()
 	}
-	return time.Duration(sum / int64(len(l)))
+	return time.Duration(sum)
 }
 
 func handleMake(args []string) {
@@ -996,7 +996,10 @@ func handleMake(args []string) {
 
 		if stats {
 			for k, v := range exc.Stats {
-				fmt.Printf("[%s] -> count = %d, mean = %v\n", k, len(v), calcMean(v))
+				sum := calcSum(v)
+				mid := time.Duration(sum.Nanoseconds() / int64(len(v)))
+
+				fmt.Printf("[%s] -> count = %d, mean = %v, sum = %v\n", k, len(v), mid, sum)
 			}
 		}
 	}
