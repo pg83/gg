@@ -151,8 +151,9 @@ func findTools() *Tools {
 type Flags map[string]string
 
 func mergeFlags(f Flags, s Flags) Flags {
-	res := maps.Clone(f)
+	res := Flags{}
 
+	maps.Copy(res, f)
 	maps.Copy(res, s)
 
 	return res
