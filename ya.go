@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jon-codes/getopt"
+	"github.com/pelletier/go-toml/v2"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -149,13 +150,19 @@ func findTools() *Tools {
 
 type Flags map[string]string
 
+func mergeFlags(f Flags, s Flags) Flags {
+	res := maps.Clone(f)
+
+	maps.Copy(res, s)
+
+	return res
+}
+
 func commonFlags(tools *Tools) *Flags {
 	res := Flags{
-		"APPLE_SDK_LOCAL":          "yes",
 		"CLANG_COVERAGE":           "no",
 		"CONSISTENT_DEBUG":         "yes",
 		"NO_DEBUGINFO":             "yes",
-		"OPENSOURCE":               "yes",
 		"OS_SDK":                   "local",
 		"TIDY":                     "no",
 		"USE_ARCADIA_PYTHON":       "yes",
@@ -177,11 +184,17 @@ func commonFlags(tools *Tools) *Flags {
 	return &res
 }
 
+type YaConf struct {
+	HostFlags   Flags `toml:"host_platform_flags"`
+	TargetFlags Flags `toml:"flags"`
+}
+
 type RenderContext struct {
 	Tools   *Tools
 	Flags   *Flags
 	SrcRoot string
 	BldRoot string
+	Config  *YaConf
 }
 
 func findRoot() string {
@@ -206,6 +219,7 @@ func newRenderContext(tools *Tools, sroot string, broot string) *RenderContext {
 		Flags:   commonFlags(tools),
 		SrcRoot: sroot,
 		BldRoot: broot,
+		Config:  loadsToml[YaConf](readFile(sroot + "/ya.conf")),
 	}
 }
 
@@ -257,8 +271,7 @@ func (self *RenderContext) toolChainFor(extra Flags) *TCDescriptor {
 		Toolchain: fields[0],
 	}
 
-	flags := maps.Clone(*self.Flags)
-	maps.Copy(flags, extra)
+	flags := mergeFlags(*self.Flags, extra)
 
 	return &TCDescriptor{
 		Flags: &flags,
@@ -404,6 +417,14 @@ type Node struct {
 type Proto struct {
 	Graph  []Node   `json:"graph"`
 	Result []string `json:"result"`
+}
+
+func loadsToml[T any](data []byte) *T {
+	var res T
+
+	throw(toml.Unmarshal(data, &res))
+
+	return &res
 }
 
 func loads[T any](data []byte) *T {
@@ -950,11 +971,11 @@ func handleMake(args []string) {
 
 	// scatter
 	tasync := async(func() *Proto {
-		return gen(tflags)
+		return gen(mergeFlags(rc.Config.TargetFlags, tflags))
 	})
 
 	hasync := async(func() *Proto {
-		return gen(hflags)
+		return gen(mergeFlags(rc.Config.HostFlags, hflags))
 	})
 
 	// gather
