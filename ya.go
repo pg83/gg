@@ -160,13 +160,11 @@ func mergeFlags(f Flags, s Flags) Flags {
 
 func commonFlags(tools *Tools) *Flags {
 	res := Flags{
-		"CLANG_COVERAGE":           "no",
 		"CONSISTENT_DEBUG":         "yes",
 		"NO_DEBUGINFO":             "yes",
 		"OS_SDK":                   "local",
 		"TIDY":                     "no",
 		"USE_ARCADIA_PYTHON":       "yes",
-		"USE_CLANG_CL":             "yes",
 		"USE_PREBUILT_TOOLS":       "no",
 		"USE_PYTHON3":              "yes",
 		"BUILD_PYTHON_BIN":         (*tools)["python3"],
@@ -864,7 +862,7 @@ func handleMake(args []string) {
 
 	config := getopt.Config{
 		Opts:     getopt.OptStr("GrdkTD:j:B:o:I:"),
-		LongOpts: getopt.LongOptStr("xbuild:,install:,output:,stats,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,host-platform-flag:"),
+		LongOpts: getopt.LongOptStr("musl,xbuild:,install:,output:,stats,build-dir:,keep-going,dump-graph,release,debug,target-platform:,host-platform:,host-platform-flag:"),
 		Mode:     getopt.ModeInOrder,
 		Func:     getopt.FuncGetOptLong,
 	}
@@ -893,6 +891,9 @@ func handleMake(args []string) {
 			dump = true
 		} else if opt.Name == "stats" {
 			stats = true
+		} else if opt.Name == "musl" {
+			hflags.parseInto("MUSL=yes")
+			tflags.parseInto("MUSL=yes")
 		} else if opt.Char == 'o' || opt.Name == "output" {
 			oroot = opt.OptArg
 		} else if opt.Char == 'I' || opt.Name == "install" {
